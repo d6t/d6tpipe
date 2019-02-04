@@ -1,0 +1,42 @@
+remotes-test-s3:
+    name: remote-name
+    protocol: s3
+    location: bucket-name
+    readCredentials:
+        aws_access_key_id: AAA
+        aws_secret_access_key: BBB
+    writeCredentials:
+        aws_access_key_id: AAA
+        aws_secret_access_key: BBB
+pipes-test-s3:
+    name: pipe-name
+    remote: remote-name
+    settings:
+        remotedir: "some/folder"
+        include: "*.csv|*.xls"
+        exclude: "backup*.csv|backup*.xls"
+    readParams:
+        pandas:
+            sep: ","
+            encoding: utf8
+remotes-test-ftp:
+    name: remote-name
+    protocol: ftp
+    location: 127.0.0.1
+    readCredentials:
+        username: AAA
+        password: BBB
+    writeCredentials:
+        username: AAA
+        password: BBB
+pipe-test-s3:
+    name: pipe-name
+    remote: remote-name
+    settings:
+        remotedir: "some/folder"
+        include: "*.csv|*.xls"
+        exclude: "backup*.csv|backup*.xls"
+    readParams:
+        pandas:
+            sep: ","
+            encoding: utf8
