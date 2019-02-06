@@ -51,8 +51,8 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech'}})
 # ************************************
 class TestMain(object):
     # scenarios = [scenario1, scenario2, scenario3]
-    scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    # scenarios = [scenario4]
+    # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
+    scenarios = [scenario4]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")

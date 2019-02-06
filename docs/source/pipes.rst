@@ -121,6 +121,13 @@ You can run any CRUD operations you can normally run on any REST API.
     api.list_pipes() # names_only=False shows all details
 
     # CRUD
+    response, data = api.cnxn.pipes.post(request_body=settings)
+    response, data = api.cnxn.pipes._('pipe-name').get()
+    response, data = api.cnxn.pipes._('pipe-name').put(request_body=new_settings)
+    response, data = api.cnxn.pipes._('pipe-name').patch(request_body=new_settings)
+    response, data = api.cnxn.pipes._('pipe-name').delete()
+
+    # using pipe object
     response, data = pipe.cnxnpipe.get()
     response, data = pipe.cnxnpipe.put(request_body=all_settings)
     response, data = pipe.cnxnpipe.patch(request_body=mod_settings)

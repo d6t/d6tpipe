@@ -75,10 +75,12 @@ You can run any CRUD operations you can normally run on any REST API.
     api.list_remotes() # names_only=False shows all details
 
     # CRUD
+    response, data = api.cnxn.remotes.post(request_body=settings)
     response, data = api.cnxn.remotes._('remote-name').get()
     response, data = api.cnxn.remotes._('remote-name').put(request_body=new_settings)
     response, data = api.cnxn.remotes._('remote-name').patch(request_body=new_settings)
     response, data = api.cnxn.remotes._('remote-name').delete()
+    # instead of api.cnxn.remotes, you can also use pipe.cnxnremote
 
 Show All Remote Files
 ---------------------------------------------
@@ -93,7 +95,7 @@ Normally you want to list remote files via a pipe. But you might need to explore
     }
 
     d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
-    pipe(api, 'show-files').scan_remote() # show all files
+    d6tpipe.Pipe(api, 'show-files').scan_remote() # show all files
 
 
 Using Self-hosted Remotes

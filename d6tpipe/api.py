@@ -148,7 +148,7 @@ class _APIBase(metaclass=d6tcollect.Collect):
 
         self.key = self.cfg_profile.get('key',None)
         if self.key is None:
-            print("Auto generated an encryption key, update the config if you want to use your own")
+            # print("Auto generated an encryption key, update the config if you want to use your own")
             import uuid
             self.key = str(uuid.uuid4())
             self.configmgr.update({'key':self.key})
