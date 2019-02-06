@@ -21,14 +21,6 @@ d6tpipe\.pipe module
     :undoc-members:
     :show-inheritance:
 
-d6tpipe\.utils module
---------------------
-
-.. automodule:: d6tpipe.utils.s3
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Module contents
 ---------------
 
