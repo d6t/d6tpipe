@@ -214,8 +214,8 @@ class _APIBase(metaclass=d6tcollect.Collect):
             list: list of pipe names
 
         """
-
-        return [ name for name in os.listdir(self.filerepopath) if os.path.isdir(os.path.join(self.filerepopath, name)) ]
+        dirs = [ name for name in os.listdir(self.filerepo) if os.path.isdir(os.path.join(self.filerepo, name)) ]
+        return [name for name in dirs if os.listdir(os.path.join(self.filerepo, name))]
 
     def move_repo(self, path):
         """
@@ -496,6 +496,10 @@ def create_pipe_with_remote(api, settings_remote, settings_pipe=None):
                 * where `session` is an AWS boto3 session
 
     """
+    if not all(v in settings_remote for v in ['name','protocol']):
+        warnings.warn('Missing name or protocol')
+    if settings_remote['protocol']!='d6tfree' and 'location' not in settings_remote:
+        warnings.warn('Missing location')
 
     if settings_pipe is None:
         settings_pipe = {}
@@ -504,4 +508,4 @@ def create_pipe_with_remote(api, settings_remote, settings_pipe=None):
     create_or_update(api.cnxn.remotes, settings_remote)
     create_or_update(api.cnxn.pipes, settings_pipe)
 
-    return settings_remote, settings_remote
+    return settings_remote, settings_pipe

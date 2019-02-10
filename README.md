@@ -11,6 +11,7 @@ But often the process is more cumbersome than you would like. With d6tpipe, in j
 ## What can d6tpipe do for you?
 
 * Quickly create public and private remote file storage eg AWS S3 and ftp
+	* Managed d6tpipe file storage which takes care of all AWS S3 settings and 1GB free storage
 * Push/pull data to/from remote file storage to sync files and share with others
 * Centrally manage data files across multiple projects
 * Secure your data with permissions management and encrypting credentials
@@ -90,18 +91,20 @@ http://d6tpipe.readthedocs.io
 
 ## Data Security
 
+If you are using managed remotes files will be stored in a d6tpipe AWS S3 bucket where permissions and credentials are managed on your behalf. Permissions are managed such that only you have access, unless you grant access to others. You can also self-host S3 and ftp which requires you or a vendor to set up and manage the remote file storage on your own.
+
 See https://d6tpipe.readthedocs.io/en/latest/security.html
 
 ## d6tflow Integration
 
 Getting files is often just the first part of a data science workflow. To help you with subsequent processing of data, we recommend you make use of [d6tflow](https://github.com/d6t/d6tflow). See [Sharing Workflows and Outputs](https://d6tflow.readthedocs.io/en/latest/collaborate.html).
 
-## Faster Data Engineering
+## Accelerate Data Science
 
-Check out other d6t libraries to solve common data engineering problems, including  
-* data ingest: quickly ingest raw data
-* fuzzy joins: quickly join data
-* data workflows: quickly build complex data workflows
+Check out other d6t libraries, including  
+* manage data workflows: quickly build highly effective data science workflows
+* import data: quickly ingest messy raw CSV and XLS files to pandas, SQL and more
+* join data: quickly combine multiple datasets using fuzzy joins
 
 https://github.com/d6t/d6t-python
 

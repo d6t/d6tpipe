@@ -35,7 +35,7 @@ Creating pipes is very similar to creating remotes, you POST to the rest API.
         'remote': 'remote-name',
     }
 
-    response, data = api.cnxn.pipes.post(request_body=settings)
+    response, data = d6tpipe.api.create_or_update(api.cnxn.pipes, settings)
 
 
 **Parameters**

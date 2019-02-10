@@ -32,6 +32,10 @@ Initially only you will be able to access the data. To share the data with other
     settings = {"user":"public","role":"read"}
     d6tpipe.create_or_update_permissions(api, 'remote-name', settings)
 
+    # view permissions (owner only)
+    pipe.cnxnremote.permissions.get()
+    api.cnxn.remotes._('remote-name').permissions.get()
+    
 
 **Parameters**
 

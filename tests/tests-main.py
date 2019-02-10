@@ -8,6 +8,7 @@ import shutil
 import copy
 import warnings
 from pathlib import Path
+import datetime
 
 from .conftest_common import *
 
@@ -35,15 +36,15 @@ flask api tests
 # ************************************
 cfg_test_param_local = [True]
 
-cfg_server = 'http://192.168.33.10:5000'
 cfg_server = 'https://d6tpipe-staging-demo.herokuapp.com'
+cfg_server = 'http://192.168.33.10:5000'
 
 scenario0 = ('blank', {})
 scenario1 = ('local', {'testcfg':{'local': True, 'encrypt':False}})
 scenario2 = ('remote', {'testcfg':{'encrypt':False}})
 scenario3 = ('remote-encrypt', {'testcfg':{}})
 scenario4 = ('heroku-staging', {'testcfg':{'server':'https://d6tpipe-staging-demo.herokuapp.com','encrypt':False}})
-scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech'}})
+scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','encrypt':False}})
 # scenario5 = ('heroku-prod', {'testcfg':{'server':'https://d6tpipe-prod-live.herokuapp.com'}})
 
 # ************************************
@@ -52,7 +53,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech'}})
 class TestMain(object):
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    scenarios = [scenario4]
+    scenarios = [scenario5]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")
@@ -66,10 +67,8 @@ class TestMain(object):
 
         d6tcollect.host = testcfg.get('server',cfg_server)
 
-        # user1
-        d6tpipe.api.ConfigManager(profile=cfg_profile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
-        # user2
-        d6tpipe.api.ConfigManager(profile=cfg_profile2,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
+        # cfg init
+        [d6tpipe.api.ConfigManager(profile=iprofile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)}) for iprofile in [cfg_profile,cfg_profile2,cfg_profile3]]
 
         yield True
 
@@ -153,9 +152,11 @@ class TestMain(object):
         # check clean
         r, d = api.cnxn.remotes.get()
         assert d==[]
+        assert cfg_remote not in api.list_remotes()
 
         # create
         response, data = d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
+        assert cfg_remote in api.list_remotes()
         if testcfg.get('local',False):
             assert response.status_code == 200
         else:
@@ -201,14 +202,20 @@ class TestMain(object):
         assert len(d)==1
         settings2 = settings.copy()
         settings2['name'] = cfg_remote+'2'
+        settings2["settings"] = {'pipedir':'dir1'}
         response, data = d6tpipe.api.create_or_update(api.cnxn.remotes, settings2)
         r, d = api.cnxn.remotes.get()
         assert len(d)==2
+        settings2["settings"] = {'pipedir':'dir2'}
+        response, data = d6tpipe.api.create_or_update(api.cnxn.remotes, settings2)
+        assert api.cnxn.remotes._(settings2['name']).get()[1]["settings"]["pipedir"] == "dir2"
+
         r, d = api.cnxn.remotes._(settings2['name']).delete()
         assert r.status_code == 204
         r, d = api.cnxn.remotes.get()
         assert len(d)==1
 
+        # permissions
         if not testcfg.get('local',False):
             api2 = getapi2()
             with pytest.raises(APIError, match='403'):
@@ -222,8 +229,10 @@ class TestMain(object):
     def pipeinit(self, testcfg):
         api = getapi(testcfg.get('local',False))
         settings = cfg_settings_pipe
+        assert cfg_pipe not in api.list_pipes()
 
         response, data = d6tpipe.api.create_or_update(api.cnxn.pipes, settings)
+        assert cfg_pipe in api.list_pipes()
         yield True
 
         r, d = api.cnxn.pipes._(cfg_pipe).delete()
@@ -253,7 +262,8 @@ class TestMain(object):
         if not testcfg.get('local',False):
             api = getapi(testcfg.get('local',False))
             api2 = getapi2(testcfg.get('local',False))
-            
+            api3 = getapi(testcfg.get('local',False),cfg_profile3)
+
             def helperowner():
                 helper(api, nremotes=1, npipes=1, iswrite=True, isadmin=True)
 
@@ -288,25 +298,38 @@ class TestMain(object):
 
 
             helperowner()
-            helper(api2, nremotes=0, npipes=0, iswrite=False, isadmin=False)
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": cfg_usr2, "role": "read"})
-            helper(api2, nremotes=1, npipes=1, iswrite=False, isadmin=False)
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": cfg_usr2, "role": "write"})
-            helper(api2, nremotes=1, npipes=1, iswrite=True, isadmin=False)
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": cfg_usr2, "role": "revoke"})
-            helper(api2, nremotes=0, npipes=0, iswrite=False, isadmin=False)
 
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": "public", "role": "read"})
-            helper(api2, nremotes=1, npipes=1, iswrite=False, isadmin=False)
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": "public", "role": "write"}) # public write disabled for now
-            helper(api2, nremotes=0, npipes=0, iswrite=False, isadmin=False)
-            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"user": "public", "role": "revoke"})
-            helper(api2, nremotes=0, npipes=0, iswrite=False, isadmin=False)
+            # private
+            def helperperm(nremotes,npipes,iswrite,nremotes2=0,npipes2=0):
+                helper(api2, nremotes=nremotes, npipes=npipes, iswrite=iswrite, isadmin=False)
+                # helper(api3, nremotes=nremotes2, npipes=npipes2, iswrite=False, isadmin=False)
+
+            helperperm(0,0,False)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"username": cfg_usr2, "role": "read"})
+            helperperm(1,1,False)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write", 'expiration_date':(datetime.datetime.now()-datetime.timedelta(days=2)).date().strftime('%Y-%m-%d')})
+            helperperm(0,0,False)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write"})
+            helperperm(1,1,True)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
+            helperperm(0,0,False)
+
+            # todo: get access to pipe, don't have access to remote
+
+            # public
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"username": "public", "role": "read"})
+            helperperm(1,1,False,1,1)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"username": "public", "role": "write"}) # public write disabled for now
+            helperperm(0,0,False)
+            api.cnxn.remotes._(cfg_remote).permissions.post(request_body={"username": "public", "role": "revoke"})
+            helperperm(0,0,False)
 
 
     def test_pipes_pull(self, cleanup, signup, remoteinit, pipeinit, testcfg):
         api = getapi(testcfg.get('local',False))
         pipe = getpipe(api)
+        assert pipe.pipe_name in api.list_pipes()
+        assert pipe.remote_name in api.list_remotes()
 
         cfg_chk_crc = ['8a9782e9efa8befa9752045ca506a62e',
          '5fe579d6b71031dad399e8d4ea82820b',
@@ -317,9 +340,11 @@ class TestMain(object):
         assert _filenames(d) == cfg_filenames_chk
         assert [o['crc'] for o in d]==cfg_chk_crc
 
+        assert api.list_local_pipes()==[]
         assert pipe.pull_preview() == cfg_filenames_chk
         assert pipe.pull() == cfg_filenames_chk
         assert pipe.pull_preview() == []
+        assert api.list_local_pipes()==[pipe.pipe_name]
 
         assert pipe.filenames() == cfg_filenames_chk
         assert pipe.files() == [Path(pipe.dirpath)/f for f in pipe.filenames()]
@@ -332,6 +357,8 @@ class TestMain(object):
         pipelocal = d6tpipe.PipeLocal(pipe.pipe_name,profile=cfg_profile, filecfg=cfg_cfgfname)
         assert pipelocal.filenames() == cfg_filenames_chk
         assert pipelocal.scan_local_filenames() == cfg_filenames_chk
+        assert pipelocal.readparams == cfg_settings_pipe['readParams']
+        df = pd.read_csv(pipe.dirpath/cfg_filenames_chk[0], **pipe.readparams['pandas'])
 
         # permissions
         if not testcfg.get('local',False):
@@ -340,7 +367,7 @@ class TestMain(object):
                 pipe2 = getpipe(api2, name=cfg_pipe, mode='all')
                 pipe2.pull()
 
-            settings = {"user": cfg_usr2, "role": "read"}
+            settings = {"username": cfg_usr2, "role": "read"}
             d6tpipe.create_or_update_permissions(api, cfg_remote, settings)
 
             pipe2 = getpipe(api2, name=cfg_pipe, mode='all')
@@ -351,6 +378,8 @@ class TestMain(object):
 
     def test_pipes_push(self, cleanup, signup, remoteinit, pipeinit, testcfg):
         api = getapi(testcfg.get('local',False))
+        pipe = getpipe(api, chk_empty=False)
+        pipe._empty_local(confirm=False, delete_all=True)
         pipe = getpipe(api)
         with pytest.raises(PushError):
             pipe.push_preview()
@@ -373,7 +402,7 @@ class TestMain(object):
         (pipe.dirpath/cfg_copyfile2).unlink()
 
         # crc works
-        df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.readparams)
+        df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.readparams['pandas'])
         df2.to_csv(pipe.dirpath/cfg_copyfile, index=False)
         assert pipe.push_preview()==[]
         df.to_csv(pipe.dirpath/cfg_copyfile, index=True)
@@ -467,7 +496,7 @@ class TestMain(object):
                 pipe2.pull()
 
             # permissions - read
-            settings = {"user": cfg_usr2, "role": "read"}
+            settings = {"username": cfg_usr2, "role": "read"}
             d6tpipe.create_or_update_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all')
@@ -478,7 +507,7 @@ class TestMain(object):
                 pipe2.push()
 
             # permissions - write
-            settings = {"user": cfg_usr2, "role": "write"}
+            settings = {"username": cfg_usr2, "role": "write"}
             d6tpipe.create_or_update_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all', chk_empty=False)

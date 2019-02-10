@@ -346,6 +346,15 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
         self.dbfiles = self._db.table(pipe_name+'-files')
         self.sortby = sortby
 
+        # create db connection
+        self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
+        self.dbfiles = self._db.table(pipe_name+'-files')
+        self.dbconfig = self._db.table(pipe_name+'-cfg')
+
+        self.cfg_remote = self.dbconfig.all()[-1]['remote']
+        self.cfg_pipe = self.dbconfig.all()[-1]['pipe']
+        self.readparams = {**self.cfg_remote.get('readParams',{}),**self.cfg_pipe.get('readParams',{})}
+
         warnings.warn('Operating in local mode, other than accessing local files, most functions will not work')
 
 class Pipe(PipeBase, metaclass=d6tcollect.Collect):
@@ -402,6 +411,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         # create db connection
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
         self.dbfiles = self._db.table(pipe_name+'-files')
+        self.dbconfig = self._db.table(pipe_name+'-cfg')
 
         self._cache = cachetools.TTLCache(maxsize=1, ttl=_cfg_cache_ttl)
 
@@ -423,6 +433,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self.cfg_remote = self.cnxnremote.get()[1]
         if not self.cfg_remote:
             raise ValueError('remote not found, make sure it was created')
+        self.remote_name = self.cfg_remote['name']
 
         # decrypt if needed
         self.encrypted_remote = self.cfg_remote.get('settings',{}).get('encrypted',False)
@@ -703,6 +714,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         # update db
         _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
+        self.dbconfig.upsert({'name': self.pipe_name, 'remote': self.cfg_remote, 'pipe': self.cfg_pipe}, Query().name == self.pipe_name)
 
         # print README.md
         if 'README.md' in filessync:

@@ -42,7 +42,8 @@ cfg_settings_pipe = {
     "settings": {
         "remotedir": "vendorX/",
         "include": "*.csv"
-    }
+    },
+    'readParams': {'pandas': {'sep': ','} }
 }
 
 cfgjson = d6tpipe.utils.loadjson('tests/.creds-test.json')
@@ -73,22 +74,20 @@ cfg_settings_pipe_encrypt = copy_encrypt(cfg_settings_pipe)
 
 cfg_profile2 = cfg_profile+'2'
 cfg_usr2 = cfg_usr+'2'
+cfg_profile3 = cfg_profile+'3'
 
 cfg_filenames_chk = ['machinedata-2018-0{}.csv'.format(i) for i in range(1,5)]
 
 # ************************************
 # helpers
 # ************************************
-def getapi(local=False):
+def getapi(local=False, profile=cfg_profile, filecfg=cfg_cfgfname):
     if local:
-        return d6tpipe.api.APILocal(profile=cfg_profile, filecfg=cfg_cfgfname)
+        return d6tpipe.api.APILocal(profile=profile, filecfg=filecfg)
     else:
-        return d6tpipe.api.APIClient(profile=cfg_profile, filecfg=cfg_cfgfname)
+        return d6tpipe.api.APIClient(profile=profile, filecfg=filecfg)
 def getapi2(local=False):
-    if local:
-        return d6tpipe.api.APILocal(profile=cfg_profile2, filecfg=cfg_cfgfname2)
-    else:
-        return d6tpipe.api.APIClient(profile=cfg_profile2, filecfg=cfg_cfgfname2)
+    return getapi(local,cfg_profile2)
 
 def getconfig(profile):
     return d6tpipe.api.ConfigManager(profile=profile, filecfg=cfg_cfgfname)

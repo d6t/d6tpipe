@@ -11,6 +11,15 @@ To quickly configure d6pipe with default settings, run the code below. With that
     import d6tpipe
     d6tpipe.api.ConfigManager().init() # just once
 
+Show Configuration
+------------------------------
+
+The config by default this is in ``~/d6tpipe/cfg.json``. You can also load it to show your config. See advanced section on what the config options are.
+
+.. code-block:: python
+    
+    d6tpipe.api.ConfigManager().load()
+
 Where are files stored?
 ------------------------------
 
@@ -42,15 +51,6 @@ You can change where files are stored locally.
 
 Advanced Topics
 ---------------------------------------------
-
-Show Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The config by default this is in ``~/d6tpipe/cfg.json``. You can also load it to show your config. See below on what the config options are.
-
-.. code-block:: python
-    
-    d6tpipe.api.ConfigManager().load()
 
 Customize Init Options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
