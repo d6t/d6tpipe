@@ -20,7 +20,7 @@ But often the process is more cumbersome than you would like. With d6tpipe, in j
 
 It works similar to git: files are stored in a remote file storage and you pull files to your local machine. The d6tpipe repo API, which is a meta-database, stores the settings to pull and load data. Unlike git, local files are stored in a central file storage, easily accessible but separate from your code. As data files change, you pull/push files that have changed from/to remote storage.
 
-![How it works](docs/source/how-works.png?raw=true "How it works"){:width="66%"}
+![How it works](docs/source/how-works.png "How it works")
 
 Why not just use git for data too? Because git is designed for small text files not large data files, slower and less secure. It also good practice to separate data from code so you manage code with git and data with d6tpipe.
 
