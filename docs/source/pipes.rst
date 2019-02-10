@@ -56,8 +56,6 @@ readParams
 
 .. code-block:: python
 
-.. code-block:: python
-
     settings = \
     {
         'readParams': {
@@ -77,7 +75,7 @@ readParams
         }
     }
 
-    pipe.cnxnpipe
+    pipe.cnxnpipe.patch(settings) # update settings
 
 The flexibility is good but you might want to consider adhering to metadata specifications such as https://frictionlessdata.io/specs/.
 

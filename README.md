@@ -6,15 +6,35 @@ d6tpipe is a python library which makes it easier to exchange data files. It's l
 
 Sharing data files is common, for example between data vendors and consumers, data engineers and data scientists, teachers and students or desktop and laptop. 
 
-But often the process is more cumbersome than you would like. With d6tpipe, in just a few lines of code, you can push and pull data files to/from a remote file store in a simple and unified framework. This allows you to separate data from code: code in git, data in data storage.
+But often the process is more cumbersome than you would like. With d6tpipe, in just a few lines of code, you can push and pull data files to/from a remote file store in a simple and unified framework. The recipient doesn't have to know where and how data is stored, the sender manages that on behalf of the recipient.
 
 ## What can d6tpipe do for you?
 
-* Quickly create public and private remote file storage on AWS S3 and ftp
+* Quickly create public and private remote file storage eg AWS S3 and ftp
 * Push/pull data to/from remote file storage to sync files and share with others
 * Centrally manage data files across multiple projects
 * Secure your data with permissions management and encrypting credentials
 * Easily load and process files you have pulled
+
+## How does it work?
+
+It works similar to git: files are stored in a remote file storage and you pull files to your local machine. The d6tpipe repo API, which is a meta-database, stores the settings to pull and load data. Unlike git, local files are stored in a central file storage, easily accessible but separate from your code. As data files change, you pull/push files that have changed from/to remote storage.
+
+![How it works](docs/source/how-works.png?raw=true "How it works")
+
+Why not just use git for data too? Because git is designed for small text files not large data files, slower and less secure. It also good practice to separate data from code so you manage code with git and data with d6tpipe.
+
+## Installation
+
+Install with `pip install d6tpipe`. To update, run `pip install d6tpipe -U --no-deps`.
+
+To install with ftp/sftp dependencies run `pip install d6tpipe[ftp]`.
+
+You can also clone the repo and run `pip install .`
+
+## First-time setup and registration
+
+See https://d6tpipe.readthedocs.io/en/latest/quickstart.html#first-time-setup
 
 ## Example Usage
 
@@ -25,7 +45,10 @@ For full quickstart instructions including setup, see [Quickstart documentation]
 ```python
 
 import d6tpipe
-api = d6tpipe.api.APIClient() # see first-time setup to run
+
+d6tpipe.api.ConfigManager().init() # just once
+api = d6tpipe.api.APIClient() # connect to repo API
+api.register('your-username','your@email.com','password') # just once
 
 # find interesting datasets
 api.list_pipes()
@@ -60,18 +83,6 @@ df.head(2)
 '''
 
 ```
-
-## Installation
-
-Install with `pip install d6tpipe`. To update, run `pip install d6tpipe -U --no-deps`.
-
-To install with ftp/sftp dependencies run `pip install d6tpipe[ftp]`.
-
-You can also clone the repo and run `pip install .`
-
-## First-time setup and registration
-
-See https://d6tpipe.readthedocs.io/en/latest/quickstart.html#first-time-setup
 
 ## Documentation
 

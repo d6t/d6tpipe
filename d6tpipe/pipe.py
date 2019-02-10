@@ -106,10 +106,18 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
     Abstract class, don't use this directly
 
+    Args:
+        api (obj): API manager object
+        pipe_name (str): name of the data pipe. Has to be created first
+        mode (str): sync mode
+        sortby (str): sort files this key. `filename`, `modified_at`, `size`
+        read_credentials (str): override remote credentials used
+        write_credentials (str): override remote credentials used
+
     """
 
     def __init__(self):
-        raise NotImplementedError('Do not directly use this class')
+        warnings.warn('Do not directly use this class')
 
     def _getfilter(self, include=None, exclude=None):
         return include, exclude
@@ -300,7 +308,6 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
             self.dbfiles.purge()
 
 class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
-
     """
 
     Managed data pipe
@@ -342,9 +349,7 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
         warnings.warn('Operating in local mode, other than accessing local files, most functions will not work')
 
 class Pipe(PipeBase, metaclass=d6tcollect.Collect):
-
     """
-
     Managed data pipe
 
     Args:
