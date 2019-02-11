@@ -36,7 +36,10 @@ class TestClientTiny():
             self.cfg_path.unlink()
 
     def teardown_method(self, method):
-        self.cfg_path.unlink()
+        try:
+            self.cfg_path.unlink()
+        except:
+            warnings.warn('could not delete db')
 
     def test_all(self):
 

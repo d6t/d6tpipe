@@ -430,7 +430,7 @@ def create_or_update(apiroot, settings):
             return apiroot.post(request_body=settings)
         else:
             raise e
-    return apiroot._(settings['name']).get(request_body=settings)
+    return apiroot._(settings['name']).get()
 
 @d6tcollect.collect
 def create_or_update_permissions(api, remote_name, settings):

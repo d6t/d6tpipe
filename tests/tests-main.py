@@ -53,7 +53,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 class TestMain(object):
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    scenarios = [scenario5]
+    scenarios = [scenario2]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")
@@ -157,10 +157,7 @@ class TestMain(object):
         # create
         response, data = d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
         assert cfg_remote in api.list_remotes()
-        if testcfg.get('local',False):
-            assert response.status_code == 200
-        else:
-            assert response.status_code == 201
+        assert response.status_code == 201
         yield True
 
         r, d = api.cnxn.remotes._(cfg_remote).delete()

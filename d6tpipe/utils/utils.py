@@ -55,7 +55,7 @@ class TinydbREST(object):
         r = self.db.get(Query().name==self.pk)
         if r is None:
             # todo: return 404 not found error. on GET and _('pipe').post()
-            return []
+            raise IOError('{} Not found'.format(self.pk))
         elif 'data' in r.keys():
             return r['data']
         else:
