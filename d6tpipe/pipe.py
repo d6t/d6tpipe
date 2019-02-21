@@ -423,6 +423,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             else:
                 msg += ' Read only access'
         print(msg)
+        self.dbconfig.upsert({'name': self.pipe_name, 'remote': self.cfg_remote, 'pipe': self.cfg_pipe}, Query().name == self.pipe_name)
 
     def _set_remote(self, name=None, read_credentials=None, write_credentials=None):
         if name is None:
