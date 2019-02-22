@@ -36,8 +36,8 @@ flask api tests
 # ************************************
 cfg_test_param_local = [True]
 
-cfg_server = 'https://d6tpipe-staging-demo.herokuapp.com'
 cfg_server = 'http://192.168.33.10:5000'
+cfg_server = 'https://d6tpipe-staging-demo.herokuapp.com'
 
 scenario0 = ('blank', {})
 scenario1 = ('local', {'testcfg':{'local': True, 'encrypt':False}})
@@ -53,7 +53,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 class TestMain(object):
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    scenarios = [scenario2]
+    scenarios = [scenario1]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")

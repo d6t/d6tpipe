@@ -257,15 +257,17 @@ class RemoteFileSystem(luigi.target.FileSystem):
         except ftplib.all_errors as e:
             print('_rm_recursive: Could not remove {0}: {1}'.format(path, e))
 
-    def put(self, local_path, path, atomic=True):
+    def put(self, local_path, path, atomic=None):
         """
         Put file from local filesystem to (s)FTP.
         """
         self._connect()
 
         if self.sftp:
-            self._sftp_put(local_path, path, atomic)
+            atomic = False if atomic is None else atomic
+            self._sftp_put(local_path, path, atomic) # todo: figure out why it fails otherwise
         else:
+            atomic = True if atomic is None else atomic
             self._ftp_put(local_path, path, atomic)
 
         self._close()
