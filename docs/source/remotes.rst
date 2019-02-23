@@ -25,11 +25,11 @@ Initially only you will be able to access the data. To share the data with other
 .. code-block:: python
 
     # give another user access
-    settings = {"user":"another-user","role":"read"} # read, write, admin
+    settings = {"username":"another-user","role":"read"} # read, write, admin
     d6tpipe.create_or_update_permissions(api, 'remote-name', settings)
 
     # make data repo public
-    settings = {"user":"public","role":"read"}
+    settings = {"username":"public","role":"read"}
     d6tpipe.create_or_update_permissions(api, 'remote-name', settings)
 
     # view permissions (owner only)
