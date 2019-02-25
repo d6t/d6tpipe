@@ -12,7 +12,6 @@ from pathlib import Path
 import jwt
 
 import d6tcollect
-d6tcollect.init(__name__)
 
 from d6tpipe.http_client import client as python_http_client
 from d6tpipe.utils.utils import ClientTiny, loadjson, _dict_sort

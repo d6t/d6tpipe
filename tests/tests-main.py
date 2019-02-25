@@ -53,7 +53,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 class TestMain(object):
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    scenarios = [scenario1]
+    scenarios = [scenario4]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")
@@ -475,11 +475,12 @@ class TestMain(object):
 
             # test push/pull
             pipe = getpipe(api, name=cfg_name, mode='all')
-            cfg_copyfile = 'test.csv'
-            cfg_copyfile2 = 'test2.csv'
+            cfg_copyfile = 'folder/test.csv'
+            cfg_copyfile2 = 'folder/test2.csv'
             pipe._pullpush_luigi([cfg_copyfile,cfg_copyfile2],op='remove')
 
             df = pd.DataFrame({'a':range(10)})
+            (pipe.dirpath/cfg_copyfile).parent.mkdir(exist_ok=True)
             df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
             # assert False
             assert pipe.push()==[cfg_copyfile]

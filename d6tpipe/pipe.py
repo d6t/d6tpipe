@@ -15,7 +15,6 @@ from d6tpipe.tinydb_serializers import DateTimeSerializer
 from d6tpipe.utils import filemd5, copytree
 from d6tpipe.exceptions import *
 import d6tcollect
-d6tcollect.init(__name__)
 
 #**********************************
 # helpers
@@ -149,7 +148,7 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
                 files = _tinydb_last(self.dbfiles,'local')
                 files = _filenames(files)
             else:
-                files = [str(p.relative_to(self.dir)) for p in self.dirpath.glob('**/*') if not p.is_dir()]
+                files = [str(PurePosixPath(p.relative_to(self.dir))) for p in self.dirpath.glob('**/*') if not p.is_dir()]
 
             include, exclude = self._getfilter(include, exclude)
             files = _apply_fname_filter(files, include, exclude)
@@ -811,10 +810,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         for fname in tqdm(files):
             pbar = pbar + fname
             fnameremote = remote_prefix+fname
-            if self.cfg_remote['protocol'] in ['ftp','sftp']:
-                fnameremote = fnameremote.replace('\\','/')
             fnamelocalpath = self.dirpath/fname
-            fnamelocal = str(fnamelocalpath)
+            fnamelocal = str(PurePosixPath(fnamelocalpath))
             if op=='put':
                 cnxn.put(fnamelocal, fnameremote)
             elif op=='get':
