@@ -7,7 +7,7 @@ import warnings, logging
 from datetime import datetime
 from tinydb import TinyDB, Query
 from tinydb_serialization import SerializationMiddleware
-import cachetools
+import cachetools, expiringdict
 from tqdm import tqdm
 
 from d6tpipe.api import ConfigManager
@@ -21,8 +21,6 @@ import d6tcollect
 #**********************************
 
 _cfg_mode_valid = ['default', 'new', 'mod', 'all']
-_cfg_cache_ttl = 5*60
-_cfg_dir_tmp = '.tmp'
 _tdbserialization = SerializationMiddleware()
 _tdbserialization.register_serializer(DateTimeSerializer(), 'TinyDate')
 
@@ -105,18 +103,12 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
     Abstract class, don't use this directly
 
-    Args:
-        api (obj): API manager object
-        pipe_name (str): name of the data pipe. Has to be created first
-        mode (str): sync mode
-        sortby (str): sort files this key. `filename`, `modified_at`, `size`
-        read_credentials (str): override remote credentials used
-        write_credentials (str): override remote credentials used
-
     """
 
-    def __init__(self):
-        warnings.warn('Do not directly use this class')
+    def __init__(self, name):
+        if not re.match(r'^[a-zA-Z0-9-]+$', name):
+            raise ValueError('Invalid pipe name, needs to be alphanumeric [a-zA-Z0-9-]')
+        self.name = name
 
     def _getfilter(self, include=None, exclude=None):
         return include, exclude
@@ -309,26 +301,19 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
     """
 
-    Managed data pipe
+    Managed data pipe, LOCAL mode for accessing local files ONLY
 
     Args:
         api (obj): API manager object
-        pipe_name (str): name of the data pipe. Has to be created first
-        mode (str): sync mode
+        name (str): name of the data pipe
+        profile (str): name of profile to use
+        filecfg (str): path to where config file is stored
         sortby (str): sort files this key. `filename`, `modified_at`, `size`
-        read_credentials (str): override remote credentials used
-        write_credentials (str): override remote credentials used
-
-    Note:
-        * mode: controls which files are synced
-            * 'default': modified and new files
-            * 'new': new files only
-            * 'mod': modified files only
-            * 'all': all files
 
     """
 
-    def __init__(self, pipe_name, config=None, profile=None, filecfg='~/d6tpipe/cfg.json', sortby='filename'):
+    def __init__(self, name, config=None, profile=None, filecfg='~/d6tpipe/cfg.json', sortby='filename'):
+        super().__init__(name)
         self.profile = 'default' if profile is None else profile
         if config is None:
             self.configmgr = ConfigManager(filecfg=filecfg, profile=self.profile)
@@ -339,22 +324,21 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
 
         self.cfg_profile = self.config
         self.filerepo = self.cfg_profile['filerepo']
-        self.dirpath = Path(self.filerepo)/pipe_name
+        self.dirpath = Path(self.filerepo)/name
         self.dir = str(self.dirpath) + os.sep
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
-        self.dbfiles = self._db.table(pipe_name+'-files')
+        self.dbfiles = self._db.table(name+'-files')
         self.sortby = sortby
 
         # create db connection
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
-        self.dbfiles = self._db.table(pipe_name+'-files')
-        self.dbconfig = self._db.table(pipe_name+'-cfg')
+        self.dbfiles = self._db.table(name+'-files')
+        self.dbconfig = self._db.table(name+'-cfg')
 
-        self.cfg_remote = self.dbconfig.all()[-1]['remote']
-        self.cfg_pipe = self.dbconfig.all()[-1]['pipe']
-        self.readparams = {**self.cfg_remote.get('readParams',{}),**self.cfg_pipe.get('readParams',{})}
+        self.settings = self.dbconfig.all()[-1]['pipe'] if self.dbconfig.all() else {}
+        self.schema = self.settings.get('schema',{})
 
-        warnings.warn('Operating in local mode, other than accessing local files, most functions will not work')
+        print('Operating in local mode, use this to access local files, to run remote operations use `Pipe()`')
 
 class Pipe(PipeBase, metaclass=d6tcollect.Collect):
     """
@@ -362,11 +346,10 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
     Args:
         api (obj): API manager object
-        pipe_name (str): name of the data pipe. Has to be created first
+        name (str): name of the data pipe. Has to be created first
         mode (str): sync mode
         sortby (str): sort files this key. `filename`, `modified_at`, `size`
-        read_credentials (str): override remote credentials used
-        write_credentials (str): override remote credentials used
+        credentials (dict): override credentials
 
     Note:
         * mode: controls which files are synced
@@ -377,110 +360,61 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
     """
 
-    def __init__(self, api, pipe_name, mode='default', sortby='filename', read_credentials=None, write_credentials=None):
+    def __init__(self, api, name, mode='default', sortby='filename', credentials=None):
+
+        # set params
+        super().__init__(name)
         self.api = api
-
-        if not re.match(r'^[a-zA-Z0-9-]+$', pipe_name):
-            raise ValueError('Invalid pipe name, needs to be alphanumeric [a-zA-Z0-9-]')
-        self.pipe_name = pipe_name
-
         if not mode in _cfg_mode_valid:
             raise ValueError('Invalid mode, needs to be {}'.format(_cfg_mode_valid))
         self.mode = mode
         self.sortby = sortby
-        self.cnxnapi = api.cnxn
-        self.cnxnpipe = self.cnxnapi.pipes._(pipe_name)
 
         # get remote details
-        self.cfg_pipe = self.cnxnpipe.get()[1]
-        if not self.cfg_pipe:
+        self.cnxnapi = api.cnxn
+        self.cnxnpipe = self.cnxnapi.pipes._(name)
+        self.settings = self.cnxnpipe.get()[1]
+        if not self.settings:
             raise ValueError('pipe not found, make sure it was created')
-        self.cfg_pipe['settings'] = self.cfg_pipe.get('settings',{})
-        self.encrypted_pipe = self.cfg_pipe.get('settings',{}).get('encrypted',False)
+        if self.settings['protocol'] not in ['ftp', 'sftp']:
+            raise NotImplementedError('Unsupported protocol, only s3 and (s)ftp supported')
+        self.remote_prefix = self.settings['location']
+        self.settings['options'] = self.settings.get('options',{})
+        self.encrypted_pipe = self.settings['options'].get('encrypted',False)
         if self.encrypted_pipe:
-            self.cfg_pipe = self.api.decode(self.cfg_pipe)
+            self.settings = self.api.decode(self.settings)
         self.cfg_profile = api.cfg_profile
-        self._set_remote(read_credentials=read_credentials, write_credentials=write_credentials)
-        self.cfg_pipe['settings'] = {**self.cfg_remote.get('settings',{}),**self.cfg_pipe['settings']}
-        self._set_dir(self.pipe_name)
+        self._set_dir(self.name)
+        self.credentials_override = credentials
 
         # DDL
-        self.readparams = {**self.cfg_remote.get('readParams',{}),**self.cfg_pipe.get('readParams',{})}
+        self.schema = self.settings.get('schema',{})
 
         # create db connection
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
-        self.dbfiles = self._db.table(pipe_name+'-files')
-        self.dbconfig = self._db.table(pipe_name+'-cfg')
+        self.dbfiles = self._db.table(name+'-files')
+        self.dbconfig = self._db.table(name+'-cfg')
 
-        self._cache = cachetools.TTLCache(maxsize=1, ttl=_cfg_cache_ttl)
+        self._cache_scan = cachetools.TTLCache(maxsize=1, ttl=5*60)
+        self._cache_creds = expiringdict.ExpiringDict(max_len=2, max_age_seconds=30*60)
 
         # connect msg
-        msg = 'Successfully connected to pipe {} on remote {}. '.format(self.pipe_name,self.cfg_pipe['remote'])
-        if not self.cfg_remote_write_creds:
-            if not self.cfg_remote_read_creds:
-                warnings.warn('No read and write access credentials were found!')
-            else:
-                msg += ' Read only access'
+        msg = 'Successfully connected to pipe {} on remote {}. '.format(self.name,self.settings['remote'])
+        if not 'write' in self.credentials:
+            msg += ' Read only access'
         print(msg)
-        self.dbconfig.upsert({'name': self.pipe_name, 'remote': self.cfg_remote, 'pipe': self.cfg_pipe}, Query().name == self.pipe_name)
-
-    def _set_remote(self, name=None, read_credentials=None, write_credentials=None):
-        if name is None:
-            name = self.cfg_pipe['remote']
-        else:
-            self.cfg_pipe['remote'] = name
-        self.cnxnremote = self.cnxnapi.remotes._(name)
-        self.cfg_remote = self.cnxnremote.get()[1]
-        if not self.cfg_remote:
-            raise ValueError('remote not found, make sure it was created')
-        self.remote_name = self.cfg_remote['name']
-
-        # decrypt if needed
-        self.encrypted_remote = self.cfg_remote.get('settings',{}).get('encrypted',False)
-        if self.encrypted_remote:
-            self.cfg_remote = self.api.decode(self.cfg_remote)
-
-        if self.cfg_remote.get('settings',{}) is None: # if api not returning default {}
-            self.cfg_remote['settings'] = {}
-            
-        # get credentials
-        if read_credentials is None:
-            self.cfg_remote_read_creds = self.cfg_remote.get('readCredentials',{})
-            self.cfg_remote_read_creds = {**self.cfg_remote_read_creds,**self.cfg_pipe.get('readCredentials',{})} # pipe specific credentials
-        else:
-            self.cfg_remote_read_creds = read_credentials
-        if write_credentials is None:
-            self.cfg_remote_write_creds = self.cfg_remote.get('writeCredentials',{})
-            self.cfg_remote_write_creds = {**self.cfg_remote_write_creds,**self.cfg_pipe.get('writeCredentials',{})} # pipe specific credentials
-        else:
-            self.cfg_remote_write_creds = write_credentials
-        
-    def _get_remote_prefix(self):
-        if self.cfg_remote['protocol'] == 's3':
-            remote_prefix = str(PurePosixPath('s3://')/(self.cfg_remote['location']+'/'+str(self.dirpath_remote))).replace('s3:/','s3://')+'/'
-        elif self.cfg_remote['protocol'] in ['ftp','sftp']:
-            remote_prefix = '{}/'.format(PurePosixPath('/')/self.dirpath_remote)
-        else:
-            raise NotImplementedError('only s3 and ftp supported')
-
-        return remote_prefix
+        self.dbconfig.upsert({'name': self.name, 'pipe': self.settings}, Query().name == self.name)
 
     def _set_dir(self, dir):
-        self.dirpath_remote = self.cfg_pipe.get('settings',{}).get('remotedir','/')
-        if 'pipedir' in self.cfg_pipe.get('settings',{}):
-            self.dirpath_remote +='/'+self.cfg_pipe['settings']['pipedir']
-        self.dirpath_remote = PurePosixPath(self.dirpath_remote)
-        self.remote_prefix = self._get_remote_prefix()
-
         self.dirpath = Path(self.api.filerepo)/dir
         self.dirpath.mkdir(parents=True, exist_ok=True)  # create dir if doesn't exist
         self.dir = str(self.dirpath) + os.sep
 
     def _getfilter(self, include, exclude):
         if include is None:
-            include = self.cfg_pipe['settings'].get('include')
+            include = self.settings['settings'].get('include')
         if exclude is None:
-            exclude = self.cfg_pipe['settings'].get('exclude')
+            exclude = self.settings['settings'].get('exclude')
         return include, exclude
 
     def setmode(self, mode):
@@ -502,7 +436,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         assert mode in _cfg_mode_valid
         self.mode = mode
 
-    def update_pipe_settings(self, config):
+    def update_settings(self, config):
         """
 
         Update settings. Only keys present in the new dict will be updated, other parts of the config will be kept as is. In other words you can pass in a partial dict to update just the parts you need to be updated.
@@ -512,22 +446,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-        self.cfg_pipe.update(config)
+        self.settings.update(config)
         response, data = self.cnxnpipe.patch(config)
-        return response, data
-
-    def update_remote_settings(self, config):
-        """
-
-        Update settings. Only keys present in the new dict will be updated, other parts of the config will be kept as is. In other words you can pass in a partial dict to update just the parts you need to be updated.
-
-        Args:
-            config (dict): updated config
-
-        """
-
-        self.cfg_remote.update(config)
-        response, data = self.cnxnremote.patch(config)
         return response, data
 
     def scan_remote(self, cached=True):
@@ -543,12 +463,12 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-        c = self._cache.get(0)
+        c = self._cache_scan.get(0)
         if cached and c is not None: return c
 
         filesall, filenames = self._list_luigi()
         response, data = (),filesall
-        self._cache[0] = (response, data)
+        self._cache_scan[0] = (response, data)
         return response, data
 
         # only local scan for now
@@ -574,7 +494,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                             raise ValueError(['Invalid task status', data['status']])
 
         response, data = self.cnxnpipe.files.get()
-        self._cache[0] = (response, data)
+        self._cache_scan[0] = (response, data)
         return response, data
 
     def scan_remote_filenames(self):
@@ -672,11 +592,11 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         """
 
 
-        if self.cfg_remote_read_creds is None:
+        if self.settings_read_creds is None:
             raise ValueError('No read credentials provided. Either pass to pipe or update remote')
 
         if not cached:
-            self._cache.clear()
+            self._cache_scan.clear()
 
         filesremote = self.scan_remote()[1]
 
@@ -688,8 +608,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             filespull = _files_diff(filesremote, fileslocal, self.mode, include, exclude, nrecent)
 
         filespull_size = sum(f['size'] for f in filesremote if f['filename'] in filespull)
+        print('pulling: {:.2f}MB'.format(filespull_size / 2 ** 20))
         if dryrun:
-            print('pulling: {:.2f}MB'.format(filespull_size/2**20))
             return filespull
 
         # check if any local files have changed
@@ -710,11 +630,11 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         filessync = self._pullpush_luigi(filespull, 'get')
 
         # scan local files after pull
-        fileslocal, _ = self.scan_local(files=_filenames(filesremote))
+        fileslocal, _ = self.scan_local(files=_filenames(filessync))
 
         # update db
         _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
-        self.dbconfig.upsert({'name': self.pipe_name, 'remote': self.cfg_remote, 'pipe': self.cfg_pipe}, Query().name == self.pipe_name)
+        self.dbconfig.upsert({'name': self.name, 'remote': self.settings, 'pipe': self.settings}, Query().name == self.name)
 
         # print README.md
         if 'README.md' in filessync:
@@ -729,6 +649,127 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             print('############### LICENSE ###############')
 
         return filessync
+
+    def push_preview(self, files=None, include=None, exclude=None, nrecent=0, cached=True):
+        """
+
+        Preview of files to be pushed
+
+        Args:
+            files (list): override list of filenames
+            include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
+            exclude (str): pattern of files to exclude
+            nrecent (int): use n newest files by mod date. 0 uses all files. Negative number uses n old files
+            cached (bool): if True, use cached remote information, default 5mins. If False forces remote scan
+
+        Returns:
+            list: filenames with attributes
+
+        """
+
+        return self.push(files=files, dryrun=True, include=include, exclude=exclude, nrecent=nrecent, cached=cached)
+
+    def push(self, files=None, dryrun=False, fromdb=False, include=None, exclude=None, nrecent=0, cached=True):
+        """
+
+        Push local files to remote
+
+        Args:
+            files (list): override list of filenames
+            dryrun (bool): preview only
+            fromdb (bool): use files from local db, if false scans all files in pipe folder
+            include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
+            exclude (str): pattern of files to exclude
+            nrecent (int): use n newest files by mod date. 0 uses all files. Negative number uses n old files
+            cached (bool): if True, use cached remote information, default 5mins. If False forces remote scan
+
+        Returns:
+            list: filenames with attributes
+
+        """
+
+        if not self.settings_write_creds:
+            raise ValueError('No write credentials provided. Check that you have provided write credentials or that you have write access')
+
+        if not cached:
+            self._cache_scan.clear()
+
+        if files is not None:
+            filespush = files
+            fileslocal, _ = self.scan_local(fromdb=True)
+        else:
+            filesremote = _tinydb_last(self.dbfiles, 'local')
+            fileslocal, _ = self.scan_local(fromdb=fromdb)
+            if self.mode !='all': self.is_synced(israise=True)
+            filespush = _files_diff(fileslocal, filesremote, self.mode, include, exclude, nrecent)
+
+        filespush_size = sum(f['size'] for f in fileslocal if f['filename'] in filespush)
+        if dryrun:
+            print('pushing: {:.2f}MB'.format(filespush_size/2**20))
+            return filespush
+
+        filessync = self._pullpush_luigi(filespush, 'put')
+
+        # get files on remote after push
+        filesremote = self.scan_remote(cached=False)[1]
+
+        _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
+
+        return filessync
+
+    def reset(self):
+        """
+        Resets by deleting all files and pulling
+        """
+
+        self._empty_local()
+        self.pull()
+
+    def remove_orphans(self, direction='local', dryrun=None):
+        """
+
+        Remove file orphans locally and/or remotely. When you remove files, they don't get synced because pull/push only looks at new or modified files. Use this to clean up any removed files.
+
+        Args:
+            direction (str): where to remove files
+            dryrun (bool): preview only
+
+        Note:
+            * direction: 
+                * 'local': remove files locally, ie files that exist on local but not in remote
+                * 'remote': remove files remotely, ie files that exist on remote but not in local
+                * 'both': combine local and remote
+
+        """
+
+        assert direction in ['both','local','remote']
+        if dryrun is None:
+            warnings.warn('dryrun active by default, to execute explicitly pass dryrun=False')
+            dryrun = True
+
+        fileslocal = self.scan_local(names_only=True, fromdb=False)[0]
+        filesremote = self.scan_remote()[1]
+        filesrmlocal = []
+        filesrmremote = []
+
+        if direction in ['local','both']:
+            filesrmlocal = _files_new(fileslocal, filesremote)
+
+        if direction in ['remote','both']:
+            filesrmremote = _files_new(filesremote, fileslocal)
+
+        if dryrun:
+            return {'local': filesrmlocal, 'remote': filesrmremote}
+
+        for fname in filesrmlocal:
+            (self.dirpath/fname).unlink()
+
+        if self.settings_write_creds is None:
+            raise ValueError('No write credentials provided. Either pass to pipe or update remote')
+
+        filesrmremote = self._pullpush_luigi(filesrmremote, 'remove')
+
+        return {'local': filesrmlocal, 'remote': filesrmremote}
 
     def _list_luigi(self):
         remote_prefix = self._get_remote_prefix()
@@ -759,7 +800,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                     cnxn._ftp_mkdirs(ftp_dir)
                     return []
 
-            remote = FtpTarget(ftp_dir, self.cfg_remote['location'], username=self.cfg_remote_read_creds['username'], password=self.cfg_remote_read_creds['password'])
+            remote = FtpTarget(ftp_dir, self.settings['location'], username=self.settings_read_creds['username'], password=self.settings_read_creds['password'])
             remote.open()
 
             try:
@@ -780,11 +821,11 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             cnxn.close_del()
             return filesall
 
-        if self.cfg_remote['protocol'] == 's3':
+        if self.settings['protocol'] == 's3':
             filesall = scan_s3()
-        elif self.cfg_remote['protocol'] == 'ftp':
+        elif self.settings['protocol'] == 'ftp':
             filesall = scan_ftp()
-        elif self.cfg_remote['protocol'] == 'sftp':
+        elif self.settings['protocol'] == 'sftp':
             filesall = scan_sftp()
         else:
             raise NotImplementedError('only s3, ftp, sftp supported')
@@ -832,26 +873,39 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         return filessync
 
     def _connect(self, write=False):
-        if self.cfg_remote['protocol'] == 's3':
+
+        def _set_credentials(self, role):
+            if credentials is None:
+                credentials = self.settings.get('credentials', {})
+            if any(credentials) or credentials is not None:
+                if 'read' not in credentials:
+                    credentials['read'] = credentials
+                if 'write' not in credentials:
+                    credentials['write'] = credentials
+                self.credentials = credentials
+            else:
+                warnings.warn('No credentials were found!')
+
+        if self.settings['protocol'] == 's3':
             from luigi.contrib.s3 import S3Client
             from d6tpipe.luigi.s3 import S3Client as S3ClientToken
             if write:
-                if 'aws_session_token' in self.cfg_remote_write_creds:
-                    cnxn = S3ClientToken(**self.cfg_remote_write_creds)
+                if 'aws_session_token' in self.settings_write_creds:
+                    cnxn = S3ClientToken(**self.settings_write_creds)
                 else:
-                    cnxn = S3Client(**self.cfg_remote_write_creds)
+                    cnxn = S3Client(**self.settings_write_creds)
             else:
-                if 'aws_session_token' in self.cfg_remote_read_creds:
-                    cnxn = S3ClientToken(**self.cfg_remote_read_creds)
+                if 'aws_session_token' in self.settings_read_creds:
+                    cnxn = S3ClientToken(**self.settings_read_creds)
                 else:
-                    cnxn = S3Client(**self.cfg_remote_read_creds)
-        elif self.cfg_remote['protocol'] == 'ftp':
+                    cnxn = S3Client(**self.settings_read_creds)
+        elif self.settings['protocol'] == 'ftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
             if write:
-                cnxn = RemoteFileSystem(self.cfg_remote['location'], self.cfg_remote_write_creds['username'], self.cfg_remote_write_creds['password'])
+                cnxn = RemoteFileSystem(self.settings['location'], self.settings_write_creds['username'], self.settings_write_creds['password'])
             else:
-                cnxn = RemoteFileSystem(self.cfg_remote['location'], self.cfg_remote_read_creds['username'], self.cfg_remote_read_creds['password'])
-        elif self.cfg_remote['protocol'] == 'sftp':
+                cnxn = RemoteFileSystem(self.settings['location'], self.settings_read_creds['username'], self.settings_read_creds['password'])
+        elif self.settings['protocol'] == 'sftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
             try:
                 import pysftp
@@ -861,128 +915,15 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             cnopts.hostkeys = None
 
             if write:
-                cnxn = RemoteFileSystem(self.cfg_remote['location'], self.cfg_remote_write_creds['username'], self.cfg_remote_write_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
+                cnxn = RemoteFileSystem(self.settings['location'], self.settings_write_creds['username'], self.settings_write_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
             else:
-                cnxn = RemoteFileSystem(self.cfg_remote['location'], self.cfg_remote_read_creds['username'], self.cfg_remote_read_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
+                cnxn = RemoteFileSystem(self.settings['location'], self.settings_read_creds['username'], self.settings_read_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
         else:
             raise NotImplementedError('only s3 and ftp supported')
 
         return cnxn
 
     def _disconnect(self, cnxn):
-        if self.cfg_remote['protocol'] == 'ftp':
+        if self.settings['protocol'] == 'ftp':
             cnxn.close_del()
-
-    def push_preview(self, files=None, include=None, exclude=None, nrecent=0, cached=True):
-        """
-
-        Preview of files to be pushed
-
-        Args:
-            files (list): override list of filenames
-            include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
-            exclude (str): pattern of files to exclude
-            nrecent (int): use n newest files by mod date. 0 uses all files. Negative number uses n old files
-            cached (bool): if True, use cached remote information, default 5mins. If False forces remote scan
-
-        Returns:
-            list: filenames with attributes
-
-        """
-
-        return self.push(files=files, dryrun=True, include=include, exclude=exclude, nrecent=nrecent, cached=cached)
-
-    def push(self, files=None, dryrun=False, fromdb=False, include=None, exclude=None, nrecent=0, cached=True):
-        """
-
-        Push local files to remote
-
-        Args:
-            files (list): override list of filenames
-            dryrun (bool): preview only
-            fromdb (bool): use files from local db, if false scans all files in pipe folder
-            include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
-            exclude (str): pattern of files to exclude
-            nrecent (int): use n newest files by mod date. 0 uses all files. Negative number uses n old files
-            cached (bool): if True, use cached remote information, default 5mins. If False forces remote scan
-
-        Returns:
-            list: filenames with attributes
-
-        """
-
-        if not self.cfg_remote_write_creds:
-            raise ValueError('No write credentials provided. Check that you have provided write credentials or that you have write access')
-
-        if not cached:
-            self._cache.clear()
-
-        if files is not None:
-            filespush = files
-            fileslocal, _ = self.scan_local(fromdb=True)
-        else:
-            filesremote = _tinydb_last(self.dbfiles, 'local')
-            fileslocal, _ = self.scan_local(fromdb=fromdb)
-            if self.mode !='all': self.is_synced(israise=True)
-            filespush = _files_diff(fileslocal, filesremote, self.mode, include, exclude, nrecent)
-
-        filespush_size = sum(f['size'] for f in fileslocal if f['filename'] in filespush)
-        if dryrun:
-            print('pushing: {:.2f}MB'.format(filespush_size/2**20))
-            return filespush
-
-        filessync = self._pullpush_luigi(filespush, 'put')
-
-        # get files on remote after push
-        filesremote = self.scan_remote(cached=False)[1]
-
-        _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
-
-        return filessync
-
-    def remove_orphans(self, direction='local', dryrun=None):
-        """
-
-        Remove file orphans locally and/or remotely. When you remove files, they don't get synced because pull/push only looks at new or modified files. Use this to clean up any removed files.
-
-        Args:
-            direction (str): where to remove files
-            dryrun (bool): preview only
-
-        Note:
-            * direction: 
-                * 'local': remove files locally, ie files that exist on local but not in remote
-                * 'remote': remove files remotely, ie files that exist on remote but not in local
-                * 'both': combine local and remote
-
-        """
-
-        assert direction in ['both','local','remote']
-        if dryrun is None:
-            warnings.warn('dryrun active by default, to execute explicitly pass dryrun=False')
-            dryrun = True
-
-        fileslocal = self.scan_local(names_only=True, fromdb=False)[0]
-        filesremote = self.scan_remote()[1]
-        filesrmlocal = []
-        filesrmremote = []
-
-        if direction in ['local','both']:
-            filesrmlocal = _files_new(fileslocal, filesremote)
-
-        if direction in ['remote','both']:
-            filesrmremote = _files_new(filesremote, fileslocal)
-
-        if dryrun:
-            return {'local': filesrmlocal, 'remote': filesrmremote}
-
-        for fname in filesrmlocal:
-            (self.dirpath/fname).unlink()
-
-        if self.cfg_remote_write_creds is None:
-            raise ValueError('No write credentials provided. Either pass to pipe or update remote')
-
-        filesrmremote = self._pullpush_luigi(filesrmremote, 'remove')
-
-        return {'local': filesrmlocal, 'remote': filesrmremote}
 

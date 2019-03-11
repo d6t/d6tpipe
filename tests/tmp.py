@@ -1,39 +1,10 @@
 import d6tpipe
-api = d6tpipe.APIClient()#profile='utest-d6tdev')
+api = d6tpipe.APIClient(profile='utest-local')
+# api.login('citynorman','pgp3dss')
 api.list_remotes()
 
-api2 = d6tpipe.APIClient(profile='citynorman')
-api2.list_remotes()
-
-pipe = d6tpipe.pipe.Pipe(api,'intro-stat-learning')
-pipe.pull()
-
-import pandas as pd
-df = pd.read_csv(pipe.dirpath/'Advertising.csv')
-
-df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.readparams['pandas'])
-print(df.head())
-
-import sklearn.preprocessing
-df = sklearn.preprocessing.scale(df)
-df.to_csv(pipe.dirpath / 'Advertising.csv')  # pipe.dirpath points to local pipe folder
-
-import dask.dataframe as dd
-files = pipe.files(include='Advertising*.csv')
-import dask.dataframe as dd
-
-files = pipe.files(include='Advertising*.csv')
-ddf = dd.read_csv(files, **pipe.readparams['dask'])
-print(ddf.head())
-
-df = pd.read_csv(pipe.files(include='*.csv')[-1])
-
-pd.read_csv(pipe.dirpath/'Income1.csv').head()
-pd.read_csv(pipe.dirpath/'Income2.csv').head()
-
-for iuser in ['sn2793','yc3526','zeana10']:
-    settings = {"user":iuser,"role":"read"} # read, write, admin
-    d6tpipe.create_or_update_permissions(api2, 'nyu-2019Q1-backtest', settings)
+api.cnxn.pipes._('intro-stat-learning').get()
+api.cnxn.remotes._('intro-stat-learning').get()
 
 
 quit()

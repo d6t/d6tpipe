@@ -36,8 +36,8 @@ flask api tests
 # ************************************
 cfg_test_param_local = [True]
 
-cfg_server = 'http://192.168.33.10:5000'
 cfg_server = 'https://d6tpipe-staging-demo.herokuapp.com'
+cfg_server = 'http://192.168.33.10:5000'
 
 scenario0 = ('blank', {})
 scenario1 = ('local', {'testcfg':{'local': True, 'encrypt':False}})
@@ -51,9 +51,9 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
+    scenarios = [scenario1]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
-    scenarios = [scenario4]
     # scenarios = [scenario4, scenario5]
 
     @pytest.fixture(scope="class")
@@ -145,14 +145,14 @@ class TestMain(object):
     @pytest.fixture(scope="class")
     def remoteinit(self, testcfg):
         api = getapi(testcfg.get('local',False))
-        settings = cfg_settings_remote
+        settings = cfg_settings_parent
         if testcfg.get('encrypt',True):
             settings = api.encode(settings)
 
         # check clean
         r, d = api.cnxn.remotes.get()
         assert d==[]
-        assert cfg_remote not in api.list_remotes()
+        assert cfg_remote not in api.list_pipes()
 
         # create
         response, data = d6tpipe.api.create_or_update(api.cnxn.remotes, settings)

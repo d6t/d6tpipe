@@ -154,23 +154,7 @@ class _APIBase(metaclass=d6tcollect.Collect):
 
         self.encrypt_keys = ['location','readCredentials','writeCredentials','settings','files','readParams']
 
-    def list_remotes(self, names_only=True):
-        """
-
-        List all remotes you have access to
-
-        Args:
-            names_only (bool): if false, return all details
-
-        """
-        r = self.cnxn.remotes.get()[1]
-        r = _dict_sort(r, 'name')
-        if names_only:
-            return [o['name'] for o in r]
-        else:
-            return r
-
-    def list_pipes(self, names_only=True):
+    def list_pipes(self, names_only=True, parent_only=False):
         """
 
         List all pipes you have access to
@@ -180,10 +164,11 @@ class _APIBase(metaclass=d6tcollect.Collect):
 
         """
         r = self.cnxn.pipes.get()[1]
+        if parent_only:
+            r = [o for o in r if not r['parent']] # todo: check
         if names_only:
-            return [o['name'] for o in r]
-        else:
-            return r
+            r = [o['name'] for o in r]
+        return r
 
     def wipe_all(self, confirm=True):
         """
@@ -326,6 +311,8 @@ class APIClient(_APIBase, metaclass=d6tcollect.Collect):
                 else:
                     self.username = d.get('username')
                     print('Connected to {} as {}'.format(self.cfg_profile['server'],self.username))
+                    if 'message' in d:
+                        print(d['message'])
             except Exception as e:
                 warnings.warn('API connection error ' + str(e))
         else:
@@ -413,7 +400,7 @@ def create_or_update(apiroot, settings):
     Convenience function to create or update a resource
 
     Args:
-        apiroot (obj): API endpoint root eg `api.cnxn.remotes`
+        apiroot (obj): API endpoint root eg `api.cnxn.pipes`
         settings (dict): resource settings
 
     Returns:
@@ -432,15 +419,15 @@ def create_or_update(apiroot, settings):
     return apiroot._(settings['name']).get()
 
 @d6tcollect.collect
-def create_or_update_permissions(api, remote_name, settings):
+def create_or_update_pipe(api, settings):
 
     """
 
-    Convenience function to create or update resource permissions
+    Convenience function to create or update a pipe
 
     Args:
-        apiroot (obj): API endpoint root eg `api.cnxn.remotes._('name').permissions`
-        settings (dict): resource settings
+        api (obj): api
+        settings (dict): pipe settings
 
     Returns:
         response (obj): server response
@@ -448,7 +435,26 @@ def create_or_update_permissions(api, remote_name, settings):
 
     """
 
-    apiroot = api.cnxn.remotes._(remote_name).permissions
+    return create_or_update(api.cnxn.pipes, settings)
+
+@d6tcollect.collect
+def create_or_update_permissions(api, pipe_name, settings):
+
+    """
+
+    Convenience function to create or update pipe permissions
+
+    Args:
+        api (obj): api
+        settings (dict): permission settings
+
+    Returns:
+        response (obj): server response
+        data (dict): json returned by server
+
+    """
+
+    apiroot = api.cnxn.pipes._(pipe_name).permissions
     # for now just post to permissions
     return apiroot.post(request_body=settings)
 
@@ -459,7 +465,7 @@ def create_or_update_from_json(apiroot, path_json, name):
     Convenience function to create or update a resource. Loads settings from config file to secure credentials
 
     Args:
-        apiroot (obj): API endpoint root eg `api.cnxn.remotes`
+        apiroot (obj): API endpoint root eg `api.cnxn.pipes`
         path_json (str): path to config file in json format
         name (str): name of json entry
 
@@ -471,40 +477,3 @@ def create_or_update_from_json(apiroot, path_json, name):
 
     settings = loadjson(path_json)[name]
     return create_or_update(apiroot, settings)
-
-@d6tcollect.collect
-def create_pipe_with_remote(api, settings_remote, settings_pipe=None):
-
-    """
-
-    Convenience function to create a remote and pipe in one go
-
-    Args:
-        api (obj): `d6tpipe.api` object
-        settings_remote (dict): remote settings
-        settings_pipe (dict): pipe settings. you can leave this blank if you don't want customize.
-
-    Returns:
-        settings_remote (dict): remote settings
-        settings_pipe (dict): pipe settings
-
-    Note:
-        * to quickly create a remote and pipe, run `d6tpipe.api.create_pipe_with_remote(api, {'name':'remote-name', 'protocol':'s3': 'readCredentials':[...]}`
-        * quicker still:
-            * `d6tpipe.api.create_pipe_with_remote(api, d6tpipe.utils.s3.create_bucket_with_users(session, 'remote-name'))`
-                * where `session` is an AWS boto3 session
-
-    """
-    if not all(v in settings_remote for v in ['name','protocol']):
-        warnings.warn('Missing name or protocol')
-    if settings_remote['protocol']!='d6tfree' and 'location' not in settings_remote:
-        warnings.warn('Missing location')
-
-    if settings_pipe is None:
-        settings_pipe = {}
-    settings_pipe['name'] = settings_pipe.get('name', settings_remote['name'])
-    settings_pipe['remote'] = settings_pipe.get('remote', settings_remote['name'])
-    create_or_update(api.cnxn.remotes, settings_remote)
-    create_or_update(api.cnxn.pipes, settings_pipe)
-
-    return settings_remote, settings_pipe

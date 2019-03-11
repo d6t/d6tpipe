@@ -90,7 +90,7 @@ d6tpipe supports the use of profiles so you can use different settings. Local fi
 .. code-block:: python
     
     # show profiles
-    api.list_profiles()
+    d6tpipe.api.list_profiles()
 
     # make profiles
     d6tpipe.api.ConfigManager(profile='user2').init()

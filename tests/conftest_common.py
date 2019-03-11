@@ -24,52 +24,50 @@ cfg_cfgfname2 = os.path.expanduser(cfg_cfgfname)
 p_cfgfname = Path(cfg_cfgfname2)
 # cfg_server = 'http://localhost:5000'
 cfg_server = 'http://192.168.1.44:5000'
-cfg_settings_remote = {
+cfgjson = d6tpipe.utils.loadjson('tests/.creds-test.json')
+
+cfg_settings_parent = {
     "name": cfg_remote,
     "protocol": "s3",
     "location": "test-augvest-20180719",
-    "readCredentials" : {
-        "aws_access_key_id": os.getenv("KEYREAD"), "aws_secret_access_key": os.getenv("SECRETREAD")
-    },
-    "writeCredentials" : {
-        "aws_access_key_id": os.getenv("KEYWRITE"), "aws_secret_access_key": os.getenv("SECRETWRITE")
-    }
+    "credentials": cfgjson['aws_augvest'],
 }
 
 cfg_settings_pipe = {
     "name": cfg_pipe,
-    "remote": cfg_remote,
+    "parent": cfg_remote,
     "settings": {
-        "remotedir": "vendorX/",
+        "dir": "vendorX/",
         "include": "*.csv"
     },
-    'readParams': {'pandas': {'sep': ','} }
+    'schema': {'pandas': {'sep': ','} }
 }
 
-cfgjson = d6tpipe.utils.loadjson('tests/.creds-test.json')
-cfg_settings_remote_sftp = {
+cfg_settings_parent_sftp = {
     "name": cfg_remote+'-sftp',
     "protocol": "sftp",
     "location": cfgjson['sftp']['host'],
-    "readCredentials" : {
-        "username": cfgjson['sftp']['username'], "password": cfgjson['sftp']['password']
-    },
-    "writeCredentials" : {
-        "username": cfgjson['sftp']['username'], "password": cfgjson['sftp']['password']
+    "credentials" : {
+        'read': {
+            "username": cfgjson['sftp']['username'], "password": cfgjson['sftp']['password']
+        },
+        "write" : {
+            "username": cfgjson['sftp']['username'], "password": cfgjson['sftp']['password']
+        }
     }
 }
 
-cfg_settings_pipe_sftp = copy.deepcopy(cfg_settings_pipe)
-cfg_settings_pipe_sftp['remote']=cfg_settings_remote_sftp['name']
-cfg_settings_pipe_sftp['name']=cfg_settings_remote_sftp['name']
-cfg_settings_pipe_sftp['settings']['remotedir']='/home/d6tdev/d6tpipe-files/vendorX'
+cfg_settings_pipe_sftp = {}
+cfg_settings_pipe_sftp['parent']=cfg_settings_parent_sftp['name']
+cfg_settings_pipe_sftp['name']=cfg_settings_parent_sftp['name']+'-vendorX'
+cfg_settings_pipe_sftp['settings']['dir']='/home/d6tdev/d6tpipe-files/vendorX'
 
 def copy_encrypt(dict_):
     dict_ = copy.deepcopy(dict_)
     dict_['name'] = dict_['name'] + '-encrypt'
     return dict_
 
-cfg_settings_remote_encrypt = copy_encrypt(cfg_settings_remote)
+cfg_settings_remote_encrypt = copy_encrypt(cfg_settings_parent)
 cfg_settings_pipe_encrypt = copy_encrypt(cfg_settings_pipe)
 
 cfg_profile2 = cfg_profile+'2'
