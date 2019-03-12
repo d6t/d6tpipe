@@ -1,11 +1,52 @@
 import d6tpipe
 api = d6tpipe.APIClient(profile='utest-local')
-# api.login('citynorman','pgp3dss')
-api.list_remotes()
+# d6tpipe.api.ConfigManager(profile='utest-local').update({'token':None})
+api.register('utest-local','a@b.com','utest-local')
 
-api.cnxn.pipes._('intro-stat-learning').get()
-api.cnxn.remotes._('intro-stat-learning').get()
+cfg_settings_parent = {
+    "name": 'utest-local',
+    "protocol": "s3",
+    "location": "test-augvest-20180719",
+}
+api.cnxn.pipes.post(request_body=cfg_settings_parent)
+api.cnxn.pipes._(cfg_settings_parent['name']).get()
+# api.cnxn.pipes._(cfg_settings_parent['name']).delete()
+d=api.cnxn.pipes._(cfg_settings_parent['name']).get()[1]
+d['schema']
+d['cache']=='OrderedDict()'
 
+cfgjson = d6tpipe.utils.loadjson('tests/.creds-test.json')
+
+cfg_profile = 'utest-dev'
+cfg_parent_name = cfg_profile+'-remote'+'-tmp'
+cfg_pipe_name = cfg_profile+'-pipe'+'-tmp'
+
+cfg_settings_parent = {
+    "name": cfg_parent_name,
+    "protocol": "s3",
+    "location": "test-augvest-20180719",
+    "credentials": cfgjson['aws_augvest'],
+}
+
+cfg_settings_pipe = {
+    "name": cfg_pipe_name,
+    "parent": cfg_parent_name,
+    "options": {
+        "dir": "vendorX/",
+        "include": "*.csv"
+    },
+    'schema': {'pandas': {'sep': ','} }
+}
+
+# api.cnxn.pipes._(cfg_settings_parent['name']).delete()
+# api.cnxn.pipes._(cfg_settings_pipe['name']).delete()
+
+api.cnxn.pipes.post(request_body=cfg_settings_parent)
+api.cnxn.pipes.post(request_body=cfg_settings_pipe)
+api.cnxn.pipes._(cfg_settings_parent['name']).get()
+api.cnxn.pipes._(cfg_settings_pipe['name']).get()
+
+api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.post(request_body={'role':'read'})
 
 quit()
 

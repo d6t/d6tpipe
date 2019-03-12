@@ -376,10 +376,10 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self.settings = self.cnxnpipe.get()[1]
         if not self.settings:
             raise ValueError('pipe not found, make sure it was created')
-        if self.settings['protocol'] not in ['ftp', 'sftp']:
+        if self.settings['protocol'] not in ['s3','ftp', 'sftp']:
             raise NotImplementedError('Unsupported protocol, only s3 and (s)ftp supported')
-        self.remote_prefix = self.settings['location']
         self.settings['options'] = self.settings.get('options',{})
+        self.remote_prefix = self.settings['options']['remotedir']
         self.encrypted_pipe = self.settings['options'].get('encrypted',False)
         if self.encrypted_pipe:
             self.settings = self.api.decode(self.settings)
@@ -399,8 +399,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self._cache_creds = expiringdict.ExpiringDict(max_len=2, max_age_seconds=30*60)
 
         # connect msg
-        msg = 'Successfully connected to pipe {} on remote {}. '.format(self.name,self.settings['remote'])
-        if not 'write' in self.credentials:
+        msg = 'Successfully connected to pipe {}. '.format(self.name)
+        if self.settings.get('role')=='read':
             msg += ' Read only access'
         print(msg)
         self.dbconfig.upsert({'name': self.name, 'pipe': self.settings}, Query().name == self.name)
@@ -412,9 +412,9 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
     def _getfilter(self, include, exclude):
         if include is None:
-            include = self.settings['settings'].get('include')
+            include = self.settings['options'].get('include')
         if exclude is None:
-            exclude = self.settings['settings'].get('exclude')
+            exclude = self.settings['options'].get('exclude')
         return include, exclude
 
     def setmode(self, mode):
@@ -772,12 +772,11 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         return {'local': filesrmlocal, 'remote': filesrmremote}
 
     def _list_luigi(self):
-        remote_prefix = self._get_remote_prefix()
 
         def scan_s3():
             cnxn = self._connect()
-            idxStart = len(remote_prefix)
-            filesall = list(cnxn.listdir(remote_prefix,return_key=True))
+            idxStart = len(self.remote_prefix)
+            filesall = list(cnxn.listdir(self.remote_prefix,return_key=True))
             def s3path(o):
                 return 's3://'+o.bucket_name+'/'+o.key
             filesall = [{'filename':s3path(o)[idxStart:], 'modified_at': str(o.last_modified), 'size':o.size, 'crc': o.e_tag.strip('\"')} for o in filesall if o.key[-1]!='/']
@@ -789,7 +788,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             except:
                 raise ModuleNotFoundError('pyftpsync not found. Run `pip install pyftpsync`')
 
-            ftp_dir = remote_prefix
+            ftp_dir = self.remote_prefix
             idxStart = len(ftp_dir)
 
             cnxn = self._connect()
@@ -813,8 +812,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         def scan_sftp():
             cnxn = self._connect()
-            if cnxn.exists(remote_prefix):
-                filesall = cnxn.listdir_attr(remote_prefix)
+            if cnxn.exists(self.remote_prefix):
+                filesall = cnxn.listdir_attr(self.remote_prefix)
                 filesall = [{'filename':o.relpath, 'modified_at': datetime.fromtimestamp(o.st_mtime), 'size':o.st_size, 'crc': "{}-{}".format(str(o.st_mtime),str(o.st_size)) } for o in filesall]
             else:
                 filesall = []
@@ -844,13 +843,11 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         if cnxn is None:
             cnxn = self._connect(op in ['put','remove'])
 
-        remote_prefix = self._get_remote_prefix()
-
         filessync = []
         pbar = ""
         for fname in tqdm(files):
             pbar = pbar + fname
-            fnameremote = remote_prefix+fname
+            fnameremote = self.remote_prefix+fname
             fnamelocalpath = self.dirpath/fname
             fnamelocal = str(PurePosixPath(fnamelocalpath))
             if op=='put':
@@ -873,38 +870,28 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         return filessync
 
     def _connect(self, write=False):
-
-        def _set_credentials(self, role):
-            if credentials is None:
-                credentials = self.settings.get('credentials', {})
-            if any(credentials) or credentials is not None:
-                if 'read' not in credentials:
-                    credentials['read'] = credentials
-                if 'write' not in credentials:
-                    credentials['write'] = credentials
-                self.credentials = credentials
-            else:
-                warnings.warn('No credentials were found!')
+        credentials = self.cnxnpipe.credentials.post(request_body={'role':'write' if write else 'read'})[1]
+        assert False
 
         if self.settings['protocol'] == 's3':
             from luigi.contrib.s3 import S3Client
             from d6tpipe.luigi.s3 import S3Client as S3ClientToken
             if write:
-                if 'aws_session_token' in self.settings_write_creds:
-                    cnxn = S3ClientToken(**self.settings_write_creds)
+                if 'aws_session_token' in credentials:
+                    cnxn = S3ClientToken(**credentials)
                 else:
-                    cnxn = S3Client(**self.settings_write_creds)
+                    cnxn = S3Client(**credentials)
             else:
-                if 'aws_session_token' in self.settings_read_creds:
-                    cnxn = S3ClientToken(**self.settings_read_creds)
+                if 'aws_session_token' in credentials:
+                    cnxn = S3ClientToken(**credentials)
                 else:
-                    cnxn = S3Client(**self.settings_read_creds)
+                    cnxn = S3Client(**credentials)
         elif self.settings['protocol'] == 'ftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
             if write:
-                cnxn = RemoteFileSystem(self.settings['location'], self.settings_write_creds['username'], self.settings_write_creds['password'])
+                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'])
             else:
-                cnxn = RemoteFileSystem(self.settings['location'], self.settings_read_creds['username'], self.settings_read_creds['password'])
+                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'])
         elif self.settings['protocol'] == 'sftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
             try:
@@ -915,9 +902,9 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             cnopts.hostkeys = None
 
             if write:
-                cnxn = RemoteFileSystem(self.settings['location'], self.settings_write_creds['username'], self.settings_write_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
+                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
             else:
-                cnxn = RemoteFileSystem(self.settings['location'], self.settings_read_creds['username'], self.settings_read_creds['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
+                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
         else:
             raise NotImplementedError('only s3 and ftp supported')
 

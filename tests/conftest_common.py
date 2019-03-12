@@ -16,8 +16,8 @@ import d6tpipe
 cfg_profile = 'utest-dev'
 cfg_usr = cfg_profile
 cfg_usrpwd = cfg_profile+'pwd'
-cfg_remote = cfg_profile+'-remote'
-cfg_pipe = cfg_profile+'-pipe'
+cfg_parent_name = cfg_profile+'-parent'
+cfg_pipe_name = cfg_profile+'-pipe'
 cfg_pipe_encrypt = cfg_profile+'-pipe-encrypt'
 cfg_cfgfname = '~/d6tpipe/cfg-'+cfg_profile+'.json'
 cfg_cfgfname2 = os.path.expanduser(cfg_cfgfname)
@@ -27,16 +27,16 @@ cfg_server = 'http://192.168.1.44:5000'
 cfgjson = d6tpipe.utils.loadjson('tests/.creds-test.json')
 
 cfg_settings_parent = {
-    "name": cfg_remote,
+    "name": cfg_parent_name,
     "protocol": "s3",
     "location": "test-augvest-20180719",
     "credentials": cfgjson['aws_augvest'],
 }
 
 cfg_settings_pipe = {
-    "name": cfg_pipe,
-    "parent": cfg_remote,
-    "settings": {
+    "name": cfg_pipe_name,
+    "parent": cfg_parent_name,
+    "options": {
         "dir": "vendorX/",
         "include": "*.csv"
     },
@@ -44,7 +44,7 @@ cfg_settings_pipe = {
 }
 
 cfg_settings_parent_sftp = {
-    "name": cfg_remote+'-sftp',
+    "name": cfg_parent_name+'-sftp',
     "protocol": "sftp",
     "location": cfgjson['sftp']['host'],
     "credentials" : {
@@ -60,7 +60,7 @@ cfg_settings_parent_sftp = {
 cfg_settings_pipe_sftp = {}
 cfg_settings_pipe_sftp['parent']=cfg_settings_parent_sftp['name']
 cfg_settings_pipe_sftp['name']=cfg_settings_parent_sftp['name']+'-vendorX'
-cfg_settings_pipe_sftp['settings']['dir']='/home/d6tdev/d6tpipe-files/vendorX'
+cfg_settings_pipe_sftp['options'] = {'dir':'/home/d6tdev/d6tpipe-files/vendorX'}
 
 def copy_encrypt(dict_):
     dict_ = copy.deepcopy(dict_)
@@ -91,7 +91,7 @@ def getconfig(profile):
     return d6tpipe.api.ConfigManager(profile=profile, filecfg=cfg_cfgfname)
 
 def getpipe(api, chk_empty=True, mode='default', name=None):
-    name = cfg_pipe if name is None else name
+    name = cfg_pipe_name if name is None else name
     pipe = d6tpipe.pipe.Pipe(api, name, mode=mode)
     if chk_empty:
         assert pipe.filenames() == []

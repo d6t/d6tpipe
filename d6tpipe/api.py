@@ -393,7 +393,7 @@ def list_profiles(filecfg='~/d6tpipe/cfg.json'):
     print(open(filecfg).read())
 
 @d6tcollect.collect
-def create_or_update(apiroot, settings):
+def upsert_resource(apiroot, settings):
 
     """
 
@@ -419,7 +419,7 @@ def create_or_update(apiroot, settings):
     return apiroot._(settings['name']).get()
 
 @d6tcollect.collect
-def create_or_update_pipe(api, settings):
+def upsert_pipe(api, settings):
 
     """
 
@@ -435,10 +435,10 @@ def create_or_update_pipe(api, settings):
 
     """
 
-    return create_or_update(api.cnxn.pipes, settings)
+    return upsert_resource(api.cnxn.pipes, settings)
 
 @d6tcollect.collect
-def create_or_update_permissions(api, pipe_name, settings):
+def upsert_permissions(api, pipe_name, settings):
 
     """
 
@@ -458,7 +458,7 @@ def create_or_update_permissions(api, pipe_name, settings):
     # for now just post to permissions
     return apiroot.post(request_body=settings)
 
-def create_or_update_from_json(apiroot, path_json, name):
+def upsert_from_json(apiroot, path_json, name):
 
     """
 
