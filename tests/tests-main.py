@@ -286,19 +286,16 @@ class TestMain(object):
                         _api.cnxn.pipes._(cfg_pipe_name).get()
                 else:
                     rpd = _api.cnxn.pipes._(cfg_pipe_name).get()[1]
+                    if iswrite:
+                        assert rpd['role']=='write'
+                    else:
+                        assert rpd['role']=='read'
                     if not isadmin:
                         with pytest.raises(APIError, match='403'):
                             _api.cnxn.pipes._(cfg_pipe_name).put(request_body={'bad': 'request'})
-                if isadmin:
-                    # put
-                    pass
-                else:
-                    # catch put error
-                    pass
 
             def helperowner():
                 helper(api, npipes=2, iswrite=True, isadmin=True)
-
 
             helperowner()
 
