@@ -314,10 +314,7 @@ class TestMain(object):
             helperperm(1,False)
 
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write", 'expiration_date':(datetime.datetime.now()-datetime.timedelta(days=2)).date().strftime('%Y-%m-%d')})
-            try:
-                helperperm(0,False)
-            except:
-                warnings.warn('todo: permission expiration')
+            helperperm(0,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write"})
             helperperm(1,True)
 
