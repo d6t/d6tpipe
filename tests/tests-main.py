@@ -395,7 +395,7 @@ class TestMain(object):
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
         assert pipe.push_preview()==[]
-        pipe._cache.clear()
+        pipe._cache_scan.clear()
         assert pipe.pull_preview()==[]
 
         # doesn't take files not meet pattern
@@ -420,9 +420,9 @@ class TestMain(object):
 
         # remove_orphans works
         (pipe.dirpath/cfg_copyfile).unlink()
-        pipe._cache.clear()
-        assert pipe.remove_orphans('both',dryrun=True)['remote']==[cfg_copyfile]
-        assert pipe.remove_orphans('both',dryrun=False)['remote']==[cfg_copyfile]
+        pipe._cache_scan.clear()
+        assert pipe.remove_orphans(direction='both',dryrun=True)['remote']==[cfg_copyfile]
+        assert pipe.remove_orphans(direction='both',dryrun=False)['remote']==[cfg_copyfile]
         assert pipe._pullpush_luigi(['test.csv'],'exists')==[False]
 
         # cleanup
@@ -471,13 +471,13 @@ class TestMain(object):
             api = getapi(testcfg.get('local', False))
 
             # test quick create
-            d6tpipe.api.create_pipe_with_remote(api, {'name': cfg_name, 'protocol': 'd6tfree'})
+            d6tpipe.api.upsert_pipe(api, {'name': cfg_name, 'protocol': 'd6tfree'})
             r, d = api.cnxn.pipes._(cfg_name).get()
-            assert d['remote']==cfg_name
-            r, d = api.cnxn.pipes._(cfg_name).get()
-            assert cfg_usr in d['location'] and cfg_name in d['location'] and d['protocol']=='s3'
-            assert "aws_session_token" in d['readCredentials'] and "aws_session_token" in d['writeCredentials']
-            assert d['readCredentials']['aws_access_key_id']!=d['writeCredentials']['aws_access_key_id']
+            assert cfg_usr in d['options']['remotepath'] and cfg_name in d['options']['remotepath'] and d['protocol']=='s3'
+            cred_read = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})[1]
+            cred_write = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role': 'write'})[1]
+            assert "aws_session_token" in cred_read and "aws_session_token" in cred_write
+            assert cred_read['aws_access_key_id']!=cred_write['aws_access_key_id']
 
             # test push/pull
             pipe = getpipe(api, name=cfg_name, mode='all')
@@ -490,7 +490,7 @@ class TestMain(object):
             df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
             # assert False
             assert pipe.push()==[cfg_copyfile]
-            pipe._cache.clear()
+            pipe._cache_scan.clear()
             assert pipe.pull()==[cfg_copyfile]
 
             # permissions - no access
@@ -504,10 +504,11 @@ class TestMain(object):
             d6tpipe.upsert_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all')
+            assert pipe2.role=='read'
             assert pipe2.pull()==[cfg_copyfile]
 
             df.to_csv(pipe2.dirpath / cfg_copyfile2, index=False)
-            with pytest.raises(ValueError, match='No write credentials'):
+            with pytest.raises(ValueError, match='Read-only'):
                 pipe2.push()
 
             # permissions - write
@@ -515,6 +516,7 @@ class TestMain(object):
             d6tpipe.upsert_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all', chk_empty=False)
+            assert pipe2.role=='write'
             assert pipe2.pull()==[cfg_copyfile]
             assert pipe2.push()==[cfg_copyfile,cfg_copyfile2]
 
@@ -541,7 +543,7 @@ class TestMain(object):
         # assert False
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
-        pipe._cache.clear()
+        pipe._cache_scan.clear()
         assert pipe.pull()==[cfg_copyfile]
 
         # cleanup
@@ -555,8 +557,7 @@ class TestMain(object):
         api = getapi(testcfg.get('local', False))
 
         # test quick create
-        d6tpipe.api.create_or_update_from_json(api.cnxn.remotes, 'tests/.creds-test.json', 'remotes-test-ftp')
-        d6tpipe.api.create_or_update_from_json(api.cnxn.pipes, 'tests/.creds-test.json', 'pipes-test-ftp')
+        d6tpipe.api.upsert_pipe_json(api, 'tests/.creds-test.json', 'pipe-test-ftp')
         cfg_name = 'test-ftp'
 
         # test push/pull
@@ -569,7 +570,7 @@ class TestMain(object):
         # assert False
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
-        pipe._cache.clear()
+        pipe._cache_scan.clear()
         assert pipe.pull()==[cfg_copyfile]
         pipe._pullpush_luigi(['test.csv'],op='remove')
         assert pipe.scan_remote(cached=False)[1]==[]

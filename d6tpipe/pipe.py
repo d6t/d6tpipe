@@ -720,7 +720,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self._empty_local()
         self.pull()
 
-    def remove_orphans(self, direction='local', dryrun=None):
+    def remove_orphans(self, files=None, direction='local', dryrun=None):
         """
 
         Remove file orphans locally and/or remotely. When you remove files, they don't get synced because pull/push only looks at new or modified files. Use this to clean up any removed files.
@@ -742,23 +742,29 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             warnings.warn('dryrun active by default, to execute explicitly pass dryrun=False')
             dryrun = True
 
-        fileslocal = self.scan_local(names_only=True, fromdb=False)[0]
-        filesremote = self.scan_remote()[1]
-        filesrmlocal = []
-        filesrmremote = []
+        if files is None:
+            fileslocal = self.scan_local(names_only=True, fromdb=False)[0]
+            filesremote = self.scan_remote()[1]
+            filesrmlocal = []
+            filesrmremote = []
 
-        if direction in ['local','both']:
-            filesrmlocal = _files_new(fileslocal, filesremote)
+            if direction in ['local','both']:
+                filesrmlocal = _files_new(fileslocal, filesremote)
 
-        if direction in ['remote','both']:
-            self._has_write()
-            filesrmremote = _files_new(filesremote, fileslocal)
+            if direction in ['remote','both']:
+                self._has_write()
+                filesrmremote = _files_new(filesremote, fileslocal)
+        else:
+            filesrmlocal = files; filesrmremote = files;
 
         if dryrun:
             return {'local': filesrmlocal, 'remote': filesrmremote}
 
         for fname in filesrmlocal:
-            (self.dirpath/fname).unlink()
+            try:
+                (self.dirpath/fname).unlink()
+            except:
+                warnings.warn('Unable to delete file {}'.format(fname))
 
         filesrmremote = self._pullpush_luigi(filesrmremote, 'remove')
 
@@ -850,7 +856,10 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                 fnamelocalpath.parent.mkdir(parents=True, exist_ok=True)
                 cnxn.get(fnameremote, fnamelocal)
             elif op=='remove':
-                cnxn.remove(fnameremote)
+                try:
+                    cnxn.remove(fnameremote)
+                except:
+                    warnings.warn('Unable to delete remote file {}'.format(fnameremote))
             elif op=='exists':
                 fname = cnxn.exists(fnameremote)
             else:

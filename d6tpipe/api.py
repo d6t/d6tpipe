@@ -458,14 +458,14 @@ def upsert_permissions(api, pipe_name, settings):
     # for now just post to permissions
     return apiroot.post(request_body=settings)
 
-def upsert_from_json(apiroot, path_json, name):
+def upsert_pipe_json(api, path_json, name):
 
     """
 
     Convenience function to create or update a resource. Loads settings from config file to secure credentials
 
     Args:
-        apiroot (obj): API endpoint root eg `api.cnxn.pipes`
+        api (obj): api
         path_json (str): path to config file in json format
         name (str): name of json entry
 
@@ -476,4 +476,4 @@ def upsert_from_json(apiroot, path_json, name):
     """
 
     settings = loadjson(path_json)[name]
-    return create_or_update(apiroot, settings)
+    return upsert_pipe(api, settings)
