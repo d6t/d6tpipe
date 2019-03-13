@@ -383,6 +383,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self.encrypted_pipe = self.settings['options'].get('encrypted',False)
         if self.encrypted_pipe:
             self.settings = self.api.decode(self.settings)
+        self.role = self.settings.get('role')
         self.cfg_profile = api.cfg_profile
         self._set_dir(self.name)
         self.credentials_override = credentials
@@ -400,7 +401,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         # connect msg
         msg = 'Successfully connected to pipe {}. '.format(self.name)
-        if self.settings.get('role')=='read':
+        if self.role=='read':
             msg += ' Read only access'
         print(msg)
         self.dbconfig.upsert({'name': self.name, 'pipe': self.settings}, Query().name == self.name)
@@ -873,7 +874,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         return filessync
 
     def _has_write(self):
-        if self.settings.get('role')=='read':
+        if self.role=='read':
             raise ValueError('Read-only role, cannot write')
 
     def _get_credentials(self, write=False):

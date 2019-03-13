@@ -3,7 +3,9 @@ api = d6tpipe.APIClient(profile='utest-local')
 # d6tpipe.api.ConfigManager(profile='utest-local').update({'token':None})
 # api.register('utest-local','a@b.com','utest-local')
 
-pipe = d6tpipe.Pipe(api,'utest-dev-pipe-tmp')
+pipe = d6tpipe.Pipe(api,'utest-d6tfree-tmp')
+pipe.pull()
+quit()
 # pipe.remove_orphans(['test.csv'],dryrun=False)
 pipe.remove_orphans('both', dryrun=True)['remote']
 pipe.list_remote()
@@ -58,11 +60,17 @@ api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.get(query_params={'role'
 
 
 settings = {'name':'utest-d6tfree-tmp','protocol':'d6tfree'}
-d6tpipe.upsert_pipe(api, settings)
+# d6tpipe.upsert_pipe(api, settings)
 api.cnxn.pipes._(settings['name']).get()
-api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.get(query_params={'role':'read'})
+api.cnxn.pipes._(settings['name']).credentials.get(query_params={'role':'read'})
 
-api.cnxn.pipes._(cfg_settings_pipe['name']).permissions.post(request_body={'username':'test','role':'read'})
+settingschild = {'name':'utest-d6tfree-tmp-child','parent':settings['name'],'options':{'dir':'test'}}
+# d6tpipe.upsert_pipe(api, settingschild)
+api.cnxn.pipes._(settingschild['name']).get()
+api.cnxn.pipes._(settingschild['name']).credentials.get(query_params={'role':'read'})
+
+
+# api.cnxn.pipes._(cfg_settings_pipe['name']).permissions.post(request_body={'username':'test','role':'read'})
 
 quit()
 
