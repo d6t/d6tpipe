@@ -1,7 +1,13 @@
 import d6tpipe
 api = d6tpipe.APIClient(profile='utest-local')
 # d6tpipe.api.ConfigManager(profile='utest-local').update({'token':None})
-api.register('utest-local','a@b.com','utest-local')
+# api.register('utest-local','a@b.com','utest-local')
+
+pipe = d6tpipe.Pipe(api,'utest-dev-pipe-tmp')
+pipe.cnxnpipe.get(query_params={'role':'read'})
+pipe.pull()
+quit()
+pipe._empty_local(False,True)
 
 cfg_settings_parent = {
     "name": 'utest-local',
@@ -46,7 +52,11 @@ api.cnxn.pipes.post(request_body=cfg_settings_pipe)
 api.cnxn.pipes._(cfg_settings_parent['name']).get()
 api.cnxn.pipes._(cfg_settings_pipe['name']).get()
 
-api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.post(request_body={'role':'read'})
+api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.post(request_body={'role':'write'})
+
+api.cnxn.pipes._(cfg_settings_pipe['name']).credentials.get(query_params={'role':'write'})
+
+api.cnxn.pipes._(cfg_settings_pipe['name']).permissions.post(request_body={'username':'test','role':'read'})
 
 quit()
 

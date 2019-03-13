@@ -379,7 +379,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         if self.settings['protocol'] not in ['s3','ftp', 'sftp']:
             raise NotImplementedError('Unsupported protocol, only s3 and (s)ftp supported')
         self.settings['options'] = self.settings.get('options',{})
-        self.remote_prefix = self.settings['options']['remotedir']
+        self.remote_prefix = self.settings['options']['remotepath']
         self.encrypted_pipe = self.settings['options'].get('encrypted',False)
         if self.encrypted_pipe:
             self.settings = self.api.decode(self.settings)
@@ -591,10 +591,6 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-
-        if self.settings_read_creds is None:
-            raise ValueError('No read credentials provided. Either pass to pipe or update remote')
-
         if not cached:
             self._cache_scan.clear()
 
@@ -630,7 +626,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         filessync = self._pullpush_luigi(filespull, 'get')
 
         # scan local files after pull
-        fileslocal, _ = self.scan_local(files=_filenames(filessync))
+        fileslocal, _ = self.scan_local(files=filessync)
 
         # update db
         _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
@@ -688,8 +684,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-        if not self.settings_write_creds:
-            raise ValueError('No write credentials provided. Check that you have provided write credentials or that you have write access')
+        self._has_write()
 
         if not cached:
             self._cache_scan.clear()
@@ -756,6 +751,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             filesrmlocal = _files_new(fileslocal, filesremote)
 
         if direction in ['remote','both']:
+            self._has_write()
             filesrmremote = _files_new(filesremote, fileslocal)
 
         if dryrun:
@@ -763,9 +759,6 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         for fname in filesrmlocal:
             (self.dirpath/fname).unlink()
-
-        if self.settings_write_creds is None:
-            raise ValueError('No write credentials provided. Either pass to pipe or update remote')
 
         filesrmremote = self._pullpush_luigi(filesrmremote, 'remove')
 
@@ -799,7 +792,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                     cnxn._ftp_mkdirs(ftp_dir)
                     return []
 
-            remote = FtpTarget(ftp_dir, self.settings['location'], username=self.settings_read_creds['username'], password=self.settings_read_creds['password'])
+            credentials = self._get_credentials()
+            remote = FtpTarget(ftp_dir, self.settings['location'], username=credentials['username'], password=credentials['password'])
             remote.open()
 
             try:
@@ -869,10 +863,29 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         return filessync
 
-    def _connect(self, write=False):
-        credentials = self.cnxnpipe.credentials.post(request_body={'role':'write' if write else 'read'})[1]
-        assert False
+    def _has_write(self):
+        if self.settings.get('role')=='read':
+            raise ValueError('Read-only role, cannot write')
 
+    def _get_credentials(self, write=False):
+        action = 'write' if write else 'read'
+
+        # check role
+        if write: self._has_write()
+
+        # get credentials from cache
+        credentials = self._cache_creds.get(action)
+        if credentials:
+            return credentials
+
+        # get credentials from api
+        credentials = self.cnxnpipe.credentials.get(query_params={'role':action})[1]
+        if not credentials:
+            raise ValueError('No {} credentials provided, make sure pipe has credentials. '.format('write' if write else 'read'))
+        return credentials
+
+    def _connect(self, write=False):
+        credentials = self._get_credentials(write)
         if self.settings['protocol'] == 's3':
             from luigi.contrib.s3 import S3Client
             from d6tpipe.luigi.s3 import S3Client as S3ClientToken

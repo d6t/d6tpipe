@@ -251,6 +251,7 @@ class TestMain(object):
 
         r, d = api.cnxn.pipes._(cfg_pipe_name).get()
         assert d['options']['remotedir'] == 's3://{}/{}/'.format(cfg_settings_parent['location'],cfg_settings_pipe['options']['dir'].strip('/'))
+        assert d['parent-ultimate']==cfg_parent_name
 
         if not testcfg.get('local',False):
             # non-existing parent
@@ -346,7 +347,7 @@ class TestMain(object):
         assert pipe.pull_preview() == cfg_filenames_chk
         assert pipe.pull() == cfg_filenames_chk
         assert pipe.pull_preview() == []
-        assert api.list_local_pipes()==[pipe.pipe_name]
+        assert api.list_local_pipes()==[pipe.name]
 
         assert pipe.filenames() == cfg_filenames_chk
         assert pipe.files() == [Path(pipe.dirpath)/f for f in pipe.filenames()]
@@ -356,23 +357,23 @@ class TestMain(object):
         assert pipe.pull_preview() == cfg_filenames_chk
 
         # PipeLocal
-        pipelocal = d6tpipe.PipeLocal(pipe.pipe_name,profile=cfg_profile, filecfg=cfg_cfgfname)
+        pipelocal = d6tpipe.PipeLocal(pipe.name,profile=cfg_profile, filecfg=cfg_cfgfname)
         assert pipelocal.filenames() == cfg_filenames_chk
         assert pipelocal.scan_local_filenames() == cfg_filenames_chk
-        assert pipelocal.readparams == cfg_settings_pipe['readParams']
-        df = pd.read_csv(pipe.dirpath/cfg_filenames_chk[0], **pipe.readparams['pandas'])
+        assert pipelocal.schema == cfg_settings_pipe['schema']
+        df = pd.read_csv(pipe.dirpath/cfg_filenames_chk[0], **pipe.schema['pandas'])
 
         # permissions
         if not testcfg.get('local',False):
             api2 = getapi2(testcfg.get('local', False))
             with pytest.raises(APIError, match='403'):
-                pipe2 = getpipe(api2, name=cfg_pipe, mode='all')
+                pipe2 = getpipe(api2, name=cfg_pipe_name, mode='all')
                 pipe2.pull()
 
             settings = {"username": cfg_usr2, "role": "read"}
-            d6tpipe.create_or_update_permissions(api, cfg_parent_name, settings)
+            r,d = d6tpipe.upsert_permissions(api, cfg_parent_name, settings)
 
-            pipe2 = getpipe(api2, name=cfg_pipe, mode='all')
+            pipe2 = getpipe(api2, name=cfg_pipe_name, mode='all')
             assert pipe2.pull()==cfg_filenames_chk
 
         # cleanup
@@ -404,7 +405,7 @@ class TestMain(object):
         (pipe.dirpath/cfg_copyfile2).unlink()
 
         # crc works
-        df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.readparams['pandas'])
+        df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.schema['pandas'])
         df2.to_csv(pipe.dirpath/cfg_copyfile, index=False)
         assert pipe.push_preview()==[]
         df.to_csv(pipe.dirpath/cfg_copyfile, index=True)
@@ -500,7 +501,7 @@ class TestMain(object):
 
             # permissions - read
             settings = {"username": cfg_usr2, "role": "read"}
-            d6tpipe.create_or_update_permissions(api, cfg_name, settings)
+            d6tpipe.upsert_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all')
             assert pipe2.pull()==[cfg_copyfile]
@@ -511,7 +512,7 @@ class TestMain(object):
 
             # permissions - write
             settings = {"username": cfg_usr2, "role": "write"}
-            d6tpipe.create_or_update_permissions(api, cfg_name, settings)
+            d6tpipe.upsert_permissions(api, cfg_name, settings)
 
             pipe2 = getpipe(api2, name=cfg_name, mode='all', chk_empty=False)
             assert pipe2.pull()==[cfg_copyfile]
