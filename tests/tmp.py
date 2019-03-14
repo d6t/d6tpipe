@@ -2,6 +2,11 @@ import d6tpipe
 api = d6tpipe.APIClient(profile='utest-local')
 # d6tpipe.api.ConfigManager(profile='utest-local').update({'token':None})
 # api.register('utest-local','a@b.com','utest-local')
+# api.login('utest-dev','utest-devpwd')
+
+cfg_name = 'utest-d6tfree'
+api.cnxn.pipes._(cfg_name).get()
+api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})
 
 pipe = d6tpipe.Pipe(api,'utest-d6tfree-tmp')
 pipe.pull()

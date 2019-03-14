@@ -279,54 +279,74 @@ class TestMain(object):
             api2 = getapi2(testcfg.get('local',False))
             api3 = getapi(testcfg.get('local',False),cfg_profile3)
 
-            def helper(_api, npipes, iswrite, isadmin):
+            def helper(_api, npipes, pipename, iswrite, isadmin):
                 rp = _api.cnxn.pipes.get()[1]
                 assert len(rp)==npipes
                 if npipes==0:
                     with pytest.raises(APIError, match='403'):
-                        _api.cnxn.pipes._(cfg_pipe_name).get()
+                        _api.cnxn.pipes._(pipename).get()
                 else:
-                    rpd = _api.cnxn.pipes._(cfg_pipe_name).get()[1]
+                    rpd = _api.cnxn.pipes._(pipename).get()[1]
                     if iswrite:
                         assert rpd['role']=='write'
+                        r, d = _api.cnxn.pipes._(pipename).credentials.get(query_params={'role': 'write'})
+                        assert len(d)>0
                     else:
                         assert rpd['role']=='read'
+                        r, d = _api.cnxn.pipes._(pipename).credentials.get(query_params={'role': 'read'})
+                        assert len(d)>0
+                        with pytest.raises(APIError, match='403'):
+                            _api.cnxn.pipes._(pipename).credentials.get(query_params={'role': 'write'})
                     if not isadmin:
                         with pytest.raises(APIError, match='403'):
-                            _api.cnxn.pipes._(cfg_pipe_name).put(request_body={'bad': 'request'})
+                            _api.cnxn.pipes._(pipename).put(request_body={'bad': 'request'})
 
             def helperowner():
-                helper(api, npipes=2, iswrite=True, isadmin=True)
+                helper(api, 2, cfg_pipe_name, True, True)
 
             helperowner()
 
             # private
-            def helperperm(npipes,iswrite,npipes2=0):
-                helper(api2, npipes=npipes, iswrite=iswrite, isadmin=False)
+            def helperperm(npipes,pipename,iswrite,npipes2=0):
+                helper(api2, npipes=npipes, pipename=pipename, iswrite=iswrite, isadmin=False)
                 # helper(api3, nremotes=nremotes2, npipes=npipes2, iswrite=False, isadmin=False)
 
-            helperperm(0,False)
+            helperperm(0,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": cfg_usr2, "role": "read"})
-            helperperm(2,False)
+            helperperm(2,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
-            helperperm(0,False)
+            helperperm(0,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_pipe_name).permissions.post(request_body={"username": cfg_usr2, "role": "read"})
-            helperperm(1,False)
+            helperperm(1,cfg_pipe_name,False)
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_parent_name).get()
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_parent_name).credentials.get(query_params={'role':'read'})
+            api.cnxn.pipes._(cfg_pipe_name).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
+            helperperm(0,cfg_pipe_name,False)
+            if 0==1: # todo: show error if user has no existing permissions that need revoke?
+                api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
 
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write", 'expiration_date':(datetime.datetime.now()-datetime.timedelta(days=2)).date().strftime('%Y-%m-%d')})
-            helperperm(0,False)
+            helperperm(0,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write"})
-            helperperm(1,True)
+            helperperm(2,cfg_parent_name,True)
+            api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "revoke"})
+            helperperm(0,cfg_parent_name,False)
+            api.cnxn.pipes._(cfg_pipe_name).permissions.post(request_body={"email": cfg_usr2+'@domain.com', "role": "write"})
+            helperperm(1,cfg_pipe_name,True)
+            api.cnxn.pipes._(cfg_pipe_name).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
+            helperperm(0,cfg_pipe_name,False)
 
             # todo: get access to child, don't have access to parent
 
             # public
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": "public", "role": "read"})
-            helperperm(2,False,1,1)
+            helperperm(2,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": "public", "role": "write"}) # public write disabled for now
-            helperperm(0,0,False)
+            helperperm(0,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": "public", "role": "revoke"})
-            helperperm(0,0,False)
+            helperperm(0,cfg_parent_name,False)
 
 
     def test_pipes_pull(self, cleanup, signup, parentinit, pipeinit, testcfg):
