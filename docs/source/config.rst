@@ -49,6 +49,19 @@ You can change where files are stored locally.
     # option 3: manually move file repo and update config
     d6tpipe.api.ConfigManager().update({'filerepo':'/some/path/'})
 
+Setting Proxy
+------------------------------
+
+If you are behind a proxy, you may have to set your proxy to pull files.
+
+.. code-block:: python
+
+    import os
+    cfg_proxy = "http://yourip:port"
+    os.environ["http_proxy"] = cfg_proxy; os.environ["HTTP_PROXY"] = cfg_proxy;
+    os.environ["https_proxy"] = cfg_proxy; os.environ["HTTPS_PROXY"] = cfg_proxy;
+
+
 Advanced Topics
 ---------------------------------------------
 

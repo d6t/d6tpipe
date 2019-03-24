@@ -4,7 +4,7 @@ Advanced: Self-hosted Remotes
 Creating Self-hosted Remotes
 ---------------------------------------------
 
-Remotes settings including read/write credentials are stored in the REST API. This allows you centrally manage access credentials to different remote data sources in a central location. 
+You can have users push/pull from your own S3 and (s)ftp resources. The repo API stores all the neccessary details so the data consumer does not have to make any changes if you make any changes to the remote storage.
 
 .. code-block:: python
 
@@ -18,11 +18,7 @@ Remotes settings including read/write credentials are stored in the REST API. Th
         'name': 'remote-name',
         'protocol': 's3',
         'location': 'bucket-name',
-        'readCredentials' : {
-            'aws_access_key_id': 'AAA', 
-            'aws_secret_access_key': 'BBB'
-        },
-        'writeCredentials' : {
+        'credentials' : {
             'aws_access_key_id': 'AAA', 
             'aws_secret_access_key': 'BBB'
         }
@@ -36,13 +32,37 @@ Parameters
 ^^^^^^^^^^^^^^^^
 
 * ``name`` (str): unique id
-* ``protocol`` (str): [s3, ftp]
+* ``protocol`` (str): [s3, ftp, sftp]
 * ``location`` (str): s3 bucket, ftp server name/ip
-* ``readCredentials`` (json): credentials for pulling. s3: aws_access_key_id, aws_secret_access_key. ftp: username, password
-* ``writeCredentials`` (json): credentials for pushing
+* ``credentials`` (json): credentials for pulling. s3: aws_access_key_id, aws_secret_access_key. ftp: username, password
 * ``settings`` (json): any settings to be shared across pipes
-    * ``remotedir`` (str): read/write from/to this subdir (auto created)
-* ``readParams`` (json): any parameters you want to pass to the reader. This will be shared across all pipes.
+    * ``dir`` (str): read/write from/to this subdir (auto created)
+* ``schema`` (json): any parameters you want to pass to the reader
+
+
+Access Control
+---------------------------------------------
+
+You can have separate read and write credentials
+
+.. code-block:: python
+
+    settings = \
+    {
+        'name': 'remote-name',
+        'protocol': 's3',
+        'location': 'bucket-name',
+        'credentials': {
+            'read' : {
+                'aws_access_key_id': 'AAA', 
+                'aws_secret_access_key': 'BBB'
+            },
+            'write' : {
+                'aws_access_key_id': 'AAA', 
+                'aws_secret_access_key': 'BBB'
+            }
+        }
+    }
 
 
 Keeping Credentials Safe
@@ -64,13 +84,13 @@ Here is a recipe for loading settings from json and yaml files.
     print(api.repo)
 
     # load settings and create
-    settings = d6tpipe.utils.loadjson(api.repopath/'.creds.json')['remote-name']
-    d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
+    settings = d6tpipe.utils.loadjson(api.repopath/'.creds.json')['pipe-name']
+    d6tpipe.api.upsert_pipe(api, settings)
 
     # or if you prefer yaml
     (api.repopath/'.creds.yaml').touch()
-    settings_remote = d6tpipe.utils.loadyaml(api.repopath/'.creds.json')['remote-name']
-    d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
+    settings_remote = d6tpipe.utils.loadyaml(api.repopath/'.creds.json')['pipe-name']
+    d6tpipe.api.upsert_pipe(api, settings)
 
 See example templates in https://github.com/d6t/d6tpipe/tree/master/docs
 

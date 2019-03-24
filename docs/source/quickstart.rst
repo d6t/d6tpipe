@@ -11,7 +11,7 @@ First-time setup and registration
 
     # register with cloud repo API
     api = d6tpipe.api.APIClient() # you likely get a messaging asking to register
-    api.register('your-username','your@email.com','password') # just once
+    api.register('your-username','your@email.com','password') # fill in your details
 
 All set! In the future, you may need to log in to d6tpipe on another machine after you already registered, call `login()` instead of `register()`.
 
@@ -19,13 +19,13 @@ All set! In the future, you may need to log in to d6tpipe on another machine aft
 
     # to log in on another machine
     api = d6tpipe.api.APIClient()
-    api.login('your-username','password') # just once
+    api.login('your-username','password') # fill in your details
 
 
 See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details. 
 
-Pull files
-------------------------------
+Pull files from remote to local
+----------------------------------
 
 To pull files, you need to connect to a data pipe. The data pipe allows you to manage the data files.
 
@@ -45,7 +45,7 @@ To pull files, you need to connect to a data pipe. The data pipe allows you to m
 See :doc:`Pull Files<../pull>` for details.
 
 
-Access and read files
+Access and read local files
 ------------------------------
 
 .. code-block:: python
@@ -53,9 +53,10 @@ Access and read files
     import d6tpipe
     api = d6tpipe.api.APIClient()
     pipe = d6tpipe.Pipe(api, 'intro-stat-learning') # connect to a data pipe
-    pipe.pull()
+    print(pipe.filenames_remote()) # show remote files
+    pipe.pull() # download files to local
 
-    # list files in pipe
+    # show local files
     print(pipe.filenames())
 
     # read a file into pandas
@@ -83,7 +84,7 @@ Process files
     # open most recent CSV
     df = pd.read_csv(pipe.files(include='*.csv')[-1])
 
-    # save data to pipe
+    # save data to local files
     df.to_csv(pipe.dirpath/'new.csv')
 
 See :doc:`Process Files <../read>` for details.
@@ -93,7 +94,7 @@ Advanced Topics
 
 This covers pushing files and creating your own remote file storage and data pipes.
 
-Write and Push Files
+Write and Push Local Files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you have been given write access or have your own pipes, you can also push files.
@@ -123,10 +124,10 @@ If you have been given write access or have your own pipes, you can also push fi
 
 See :doc:`Push <../push>` for details.
 
-Create remotes and pipes
+Create and manage pipes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You might want to create your own remote file storage that you control. A remote refers to the the remote file storage and a pipe is a connection to that file storage. You can have multiple pipes to the same remote.
+You might want to create your own remote file storage that you control. d6tpipe makes it very easy for you to set up and manage professional remote data file storage.
 
 .. code-block:: python
 
@@ -134,9 +135,9 @@ You might want to create your own remote file storage that you control. A remote
     api = d6tpipe.api.APIClient()
     
     # managed file stores can be created quickly with just one command 
-    d6tpipe.api.create_pipe_with_remote(api, {'name': 'your-data-files', 'protocol': 'd6tfree'})
+    d6tpipe.api.upsert_pipe(api, {'name': 'your-data-files', 'protocol': 'd6tfree'})
 
-See :doc:`Remotes <../remotes>` and :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Remotes <../advremotes>` .
+See :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Pipes <../advremotes>` .
 
 Share data repo
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,11 +151,11 @@ After you've created a remote or pipe, you can manage access permissions. By def
 
     # give another user access
     settings = {"user":"another-user","role":"read"} # read, write, admin
-    d6tpipe.create_or_update_permissions(api, 'your-remote', settings)
+    d6tpipe.upsert_permissions(api, 'your-pipe', settings)
 
     # make data repo public
     settings = {"user":"public","role":"read"}
-    d6tpipe.create_or_update_permissions(api, 'your-remote', settings)
+    d6tpipe.upsert_permissions(api, 'your-pipe', settings)
 
-See :doc:`Remotes <../remotes>` for details.
+See :doc:`Permissions <../remotes>` for details.
 

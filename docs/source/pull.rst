@@ -1,4 +1,4 @@
-Pull Files
+Pull Files from Remote to Local
 ==============================================
 
 What is a Pipe?
@@ -17,13 +17,13 @@ Connecting to a pipe is straight forward.
     api = d6tpipe.api.APIClient()
 
     pipe = d6tpipe.Pipe(api, 'pipe-name') # connect to a pipe
-    pipe.scan_remote_filenames() # show files in remote
+    pipe.list_remote() # show files in remote
 
 
 Pulling Files
 ---------------------------------------------
 
-Typically you have to write a lot of code to download files and sync pipe data sources. With d6tstack you can sync pull with just a few lines of python. 
+Pulling files will download files from the remote data repo to the local data repo. Typically you have to write a lot of code to download files and sync remote data sources. With d6tstack you can sync pull with just a few lines of python. 
 
 .. code-block:: python
 
@@ -32,6 +32,11 @@ Typically you have to write a lot of code to download files and sync pipe data s
     pipe.pull() # execute
 
 Your files are now stored locally in a central location and conveniently accessible. See :doc:`Accessing Pipe Files <../files>` to learn how to use files after you have pulled them.
+
+Which files are pulled?
+---------------------------------------------
+
+Only files that you don't have or that were modified are downloaded. You can manually control which files are downloaded or force download individual files, see advanced topics.
 
 Advanced Topics
 ---------------------------------------------
@@ -82,18 +87,6 @@ If you work with multiple data sources, you can connect to multiple pipes.
 
 .. code-block:: python
 
-    pipe2 = d6tpipe.Pipe(api, 'another-pipe-name') # connect to multiple pipes
+    pipe2 = d6tpipe.Pipe(api, 'another-pipe-name') # connect to multiple 
 
-
-Setting Proxy
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you are behind a proxy, you may have to set your proxy to pull files.
-
-.. code-block:: python
-
-    import os
-    cfg_proxy = "http://yourip:port"
-    os.environ["http_proxy"] = cfg_proxy; os.environ["HTTP_PROXY"] = cfg_proxy;
-    os.environ["https_proxy"] = cfg_proxy; os.environ["HTTPS_PROXY"] = cfg_proxy;
-
+    # todo: how to sync pipe1 files to pipe2?
