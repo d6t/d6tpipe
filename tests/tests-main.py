@@ -432,6 +432,8 @@ class TestMain(object):
         assert pipe.push_preview()==[]
         (pipe.dirpath/cfg_copyfile2).unlink()
 
+        # todo: exclude unit test
+
         # crc works
         df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.schema['pandas'])
         df2.to_csv(pipe.dirpath/cfg_copyfile, index=False)
@@ -552,6 +554,8 @@ class TestMain(object):
             assert pipe2.role=='write'
             assert pipe2.pull()==[cfg_copyfile]
             assert pipe2.push()==[cfg_copyfile,cfg_copyfile2]
+
+            # todo: check don't have access to parent paths in s3
 
             # cleanup
             pipe.delete_files_remote(confirm=False)
