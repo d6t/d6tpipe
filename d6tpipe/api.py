@@ -181,7 +181,7 @@ class _APIBase(metaclass=d6tcollect.Collect):
         """
 
         if confirm:
-            c = input('Confirm deleting files in '+self.dir+'. WARNING: this cannot be undone (y/n)')
+            c = input('Confirm deleting files in {}. WARNING: this cannot be undone (y/n)'.format(self.dir))
         else:
             c = 'y'
         if c=='y':

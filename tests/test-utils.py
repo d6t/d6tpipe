@@ -1,6 +1,5 @@
-import pathlib
+import pathlib, copy, warnings
 import pytest
-import copy
 
 from tinydb import TinyDB, Query
 

@@ -145,7 +145,7 @@ class TestMain(object):
     @pytest.fixture(scope="class")
     def parentinit(self, testcfg):
         api = getapi(testcfg.get('local',False))
-        settings = cfg_settings_parent
+        settings = copy.deepcopy(cfg_settings_parent)
         if testcfg.get('encrypt',True):
             settings = api.encode(settings)
 
@@ -155,6 +155,9 @@ class TestMain(object):
         assert cfg_parent_name not in api.list_pipes()
 
         # create
+        if testcfg.get('local',False):
+            settings['protocol']='s3'
+            settings['options']={'remotepath': 's3://{}/'.format(cfg_settings_parent['location'])}
         response, data = d6tpipe.api.upsert_pipe(api, settings)
         assert cfg_parent_name in api.list_pipes()
         assert response.status_code == 201
@@ -169,7 +172,7 @@ class TestMain(object):
 
     def test_apiparent(self, cleanup, signup, parentinit, testcfg):
         api = getapi(testcfg.get('local',False))
-        settings = cfg_settings_parent
+        settings = copy.deepcopy(cfg_settings_parent)
 
         # no duplicate names
         with pytest.raises(APIError, match='unique'):
@@ -200,9 +203,11 @@ class TestMain(object):
 
         # check values
         assert d['name'] == cfg_settings_parent['name']
-        for ikey in ['isPubliclyReadable','isPubliclyWritable','credentials','cache']:
-            assert ikey not in d
-        assert d['role'] == 'write'
+
+        if not testcfg.get('local',False):
+            for ikey in ['isPubliclyReadable','isPubliclyWritable','credentials','cache']:
+                assert ikey not in d
+            assert d['role'] == 'write'
         assert d['options']['remotepath'] == 's3://{}/'.format(cfg_settings_parent['location'])
 
         # create and delete
@@ -233,12 +238,14 @@ class TestMain(object):
     @pytest.fixture()
     def pipeinit(self, testcfg):
         api = getapi(testcfg.get('local',False))
-        settings = cfg_settings_pipe
+        settings = copy.deepcopy(cfg_settings_pipe)
         assert cfg_pipe_name not in api.list_pipes()
 
-        # response, data = d6tpipe.api.upsert_pipe(api, settings)
-        settings['name']=settings['name']
-        api.cnxn.pipes.post(request_body=settings)
+        if testcfg.get('local',False):
+            settings['protocol']='s3'
+            settings['credentials']=cfg_settings_parent['credentials']
+            settings['options']={**settings['options'],**{'remotepath': 's3://{}/{}'.format(cfg_settings_parent['location'],cfg_settings_pipe['options']['dir'])}}
+        response, data = d6tpipe.api.upsert_pipe(api, settings)
         assert cfg_pipe_name in api.list_pipes()
         yield True
 
@@ -247,13 +254,13 @@ class TestMain(object):
 
     def test_apipipes(self, cleanup, signup, parentinit, pipeinit, testcfg):
         api = getapi(testcfg.get('local',False))
-        settings = cfg_settings_pipe
+        settings = copy.deepcopy(cfg_settings_pipe)
 
         r, d = api.cnxn.pipes._(cfg_pipe_name).get()
         assert d['options']['remotepath'] == 's3://{}/{}/'.format(cfg_settings_parent['location'],cfg_settings_pipe['options']['dir'].strip('/'))
-        assert d['parent-ultimate']==cfg_parent_name
 
         if not testcfg.get('local',False):
+            assert d['parent-ultimate'] == cfg_parent_name
             # non-existing parent
             with pytest.raises(APIError, match='does not exist'):
                 settingsbad = settings.copy()
@@ -359,6 +366,7 @@ class TestMain(object):
          '4c7da169df85253d7ff737dde1e7400b',
          'ca62a122993494e763fd1676cce95e76']
 
+        # assert False
         r, d = pipe.scan_remote()
         assert _filenames(d) == cfg_filenames_chk
         assert [o['crc'] for o in d]==cfg_chk_crc
@@ -397,12 +405,12 @@ class TestMain(object):
             assert pipe2.pull()==cfg_filenames_chk
 
         # cleanup
-        pipe._empty_local(confirm=False,delete_all=True)
+        pipe.delete_files_local(confirm=False,delete_all=True)
 
     def test_pipes_push(self, cleanup, signup, parentinit, pipeinit, testcfg):
         api = getapi(testcfg.get('local',False))
         pipe = getpipe(api, chk_empty=False)
-        pipe._empty_local(confirm=False, delete_all=True)
+        pipe.delete_files_local(confirm=False,delete_all=True)
         pipe = getpipe(api)
         with pytest.raises(PushError):
             pipe.push_preview()
@@ -433,7 +441,7 @@ class TestMain(object):
 
         # files param works
         assert pipe.pull(files=[cfg_copyfile])==[cfg_copyfile]
-        pipe._pullpush_luigi([cfg_copyfile], 'remove')
+        pipe.delete_files_remote(files=[cfg_copyfile], confirm=False)
         assert pipe._pullpush_luigi([cfg_copyfile], 'exists') == [False]
         assert pipe.push(files=[cfg_copyfile])==[cfg_copyfile]
         assert pipe._pullpush_luigi([cfg_copyfile], 'exists') == [True]
@@ -446,7 +454,7 @@ class TestMain(object):
         assert pipe._pullpush_luigi(['test.csv'],'exists')==[False]
 
         # cleanup
-        pipe._empty_local(confirm=False,delete_all=True)
+        pipe.delete_files_local(confirm=False,delete_all=True)
 
         # def test_pipes_includeexclude(self, cleanup, parentinit, pipeinit, testcfg):
     #     pass
@@ -499,11 +507,16 @@ class TestMain(object):
             assert "aws_session_token" in cred_read and "aws_session_token" in cred_write
             assert cred_read['aws_access_key_id']!=cred_write['aws_access_key_id']
 
-            # test push/pull
+            # test force renew
             pipe = getpipe(api, name=cfg_name, mode='all')
+            pipe._reset_credentials()
+            cred_read2 = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})[1]
+            assert cred_read2['aws_access_key_id'] != cred_read['aws_access_key_id']
+
+            # test push/pull
             cfg_copyfile = 'folder/test.csv'
             cfg_copyfile2 = 'folder/test2.csv'
-            pipe._pullpush_luigi([cfg_copyfile,cfg_copyfile2],op='remove')
+            pipe.delete_files_remote(confirm=False)
 
             df = pd.DataFrame({'a':range(10)})
             (pipe.dirpath/cfg_copyfile).parent.mkdir(exist_ok=True)
@@ -541,36 +554,42 @@ class TestMain(object):
             assert pipe2.push()==[cfg_copyfile,cfg_copyfile2]
 
             # cleanup
-            pipe._pullpush_luigi([cfg_copyfile,cfg_copyfile2],op='remove')
-            assert pipe.scan_remote(cached=False)[1]==[]
-            pipe._empty_local(confirm=False,delete_all=True)
-
+            pipe.delete_files_remote(confirm=False)
+            assert pipe.filenames_remote(cached=False)==[]
+            pipe.delete_files_local(confirm=False,delete_all=True)
 
     def test_sftp(self, cleanup, signup, testcfg):
-        cfg_name = cfg_settings_parent_sftp['name']
+        cfg_name = cfg_settings_pipe_sftp['name']
         api = getapi(testcfg.get('local', False))
 
         # test quick create
         d6tpipe.api.upsert_pipe(api, cfg_settings_parent_sftp)
         d6tpipe.api.upsert_pipe(api, cfg_settings_pipe_sftp)
 
+        # test paths
+        r,d = api.cnxn.pipes._(cfg_settings_parent_sftp['name']).get()
+        assert d['options']['remotepath']=='/'
+        r,d = api.cnxn.pipes._(cfg_settings_pipe_sftp['name']).get()
+        assert d['options']['remotepath']==cfg_settings_pipe_sftp['options']['dir']+'/'
+
         # test push/pull
         pipe = getpipe(api, name=cfg_name, mode='all')
+        pipe.delete_files_remote(confirm=False)
+
         cfg_copyfile = 'test.csv'
         df = pd.DataFrame({'a':range(10)})
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
-        assert pipe.scan_remote(cached=False)[1]==[]
+        assert pipe.filenames_remote(cached=False)==[]
         assert pipe.pull()==[]
-        # assert False
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
         pipe._cache_scan.clear()
         assert pipe.pull()==[cfg_copyfile]
 
         # cleanup
-        pipe._pullpush_luigi([cfg_copyfile],op='remove')
-        assert pipe.scan_remote(cached=False)[1]==[]
-        pipe._empty_local(confirm=False,delete_all=True)
+        pipe.delete_files_remote(confirm=False)
+        assert pipe.filenames_remote(cached=False)==[]
+        pipe.delete_files_local(confirm=False,delete_all=True)
 
 
 
@@ -581,21 +600,24 @@ class TestMain(object):
         d6tpipe.api.upsert_pipe_json(api, 'tests/.creds-test.json', 'pipe-test-ftp')
         cfg_name = 'test-ftp'
 
+        # test paths
+        r,d = api.cnxn.pipes._(cfg_name).get()
+        assert d['options']['remotepath']=='/utest/'
+
         # test push/pull
         pipe = getpipe(api, name=cfg_name, mode='all')
         cfg_copyfile = 'test.csv'
         df = pd.DataFrame({'a':range(10)})
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
-        assert pipe.scan_remote(cached=False)[1]==[]
+        assert pipe.filenames_remote(cached=False)==[]
         assert pipe.pull()==[]
         # assert False
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
         pipe._cache_scan.clear()
         assert pipe.pull()==[cfg_copyfile]
-        pipe._pullpush_luigi(['test.csv'],op='remove')
-        assert pipe.scan_remote(cached=False)[1]==[]
-        pipe._empty_local(confirm=False,delete_all=True)
+        pipe.delete_files(confirm=False,all_local=True)
+        assert pipe.filenames_remote(cached=False)==[]
 
 
 
@@ -619,7 +641,7 @@ class TestAdvanced(object):
         pipe = d6tpipe.pipe.Pipe(api, cfg_pipe_name)
         pipe.pull()
         yield True
-        pipe._empty_local(confirm=False,delete_all=True)
+        pipe.delete_files_local(confirm=False,delete_all=True)
 
     def test_includeexclude(self, cleanup, init, pull):
         api = getapi(local=True)

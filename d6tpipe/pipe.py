@@ -269,26 +269,62 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
         """
         copytree(dir,self.dir, move)
 
-    def delete_all_local(self, confirm=True, delete_all=None, ignore_errors=False):
+    def delete_files(self, files=None, confirm=True, all_local=None):
+        """
+
+        Delete files, local and remote
+
+        Args:
+            files (list): filenames, if empty delete all
+            confirm (bool): ask user to confirm delete
+            all_local (bool): delete all files or just synced files? (local only)
+
+        """
+        self.delete_files_remote(files=files, confirm=confirm)
+        self.delete_files_local(files=files, confirm=confirm, delete_all=all_local)
+
+    def delete_files_remote(self, files=None, confirm=True):
+        """
+
+        Delete all remote files
+
+        Args:
+            files (list): filenames, if empty delete all
+            confirm (bool): ask user to confirm delete
+
+        """
+        if not files:
+            files='all'
+        if confirm:
+            c = input('Confirm deleting {} files in {} (y/n)'.format(files, self.remote_prefix))
+            if c=='n': return None
+        else:
+            c = 'y'
+        if c=='y':
+            if files=='all':
+                files = self.filenames_remote(cached=False)
+            self._pullpush_luigi(files, op='remove')
+
+    def delete_files_local(self, files=None, confirm=True, delete_all=None, ignore_errors=False):
         """
 
         Delete all local files and reset file database
 
         Args:
+            files (list): filenames, if empty delete all
             confirm (bool): ask user to confirm delete
             delete_all (bool): delete all files or just synced files?
             ignore_errors (bool): ignore missing file errors
 
         """
-        return self._empty_local(confirm, delete_all, ignore_errors)
-
-    def _empty_local(self, confirm=True, delete_all=None, ignore_errors=False):
+        if not files:
+            files='all'
         if confirm:
-            c = input('Confirm deleting files in '+self.dir+' (y/n)')
+            c = input('Confirm deleting {} files in {} (y/n)'.format(files, self.dir))
             if c=='n': return None
         else:
             c = 'y'
-        if delete_all is None:
+        if files=='all' and delete_all is None:
             d = input('Delete all files or just downloaded files (a/d)')
             delete_all = True if d=='a' else False
         if c=='y':
@@ -365,6 +401,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         # set params
         super().__init__(name)
         self.api = api
+        self.api_islocal = api.__class__.__name__== 'APILocal'
         if not mode in _cfg_mode_valid:
             raise ValueError('Invalid mode, needs to be {}'.format(_cfg_mode_valid))
         self.mode = mode
@@ -498,7 +535,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self._cache_scan[0] = (response, data)
         return response, data
 
-    def scan_remote_filenames(self):
+    def filenames_remote(self, cached=True):
         """
 
         Get file attributes from remote. To run before doing a pull/push
@@ -511,7 +548,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-        return _filenames(self.scan_remote()[1])
+        return _filenames(self.scan_remote(cached)[1])
 
     def list_remote(self, filesnames=False, fromdb=False):
         """
@@ -818,7 +855,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                 filesall = [{'filename':o.relpath, 'modified_at': datetime.fromtimestamp(o.st_mtime), 'size':o.st_size, 'crc': "{}-{}".format(str(o.st_mtime),str(o.st_size)) } for o in filesall]
             else:
                 filesall = []
-            cnxn.close_del()
+            # cnxn.close_del()
             return filesall
 
         if self.settings['protocol'] == 's3':
@@ -889,10 +926,22 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             return credentials
 
         # get credentials from api
-        credentials = self.cnxnpipe.credentials.get(query_params={'role':action})[1]
+        if self.api_islocal:
+            credentials = self.cnxnpipe.get()[1]['credentials']
+            if 'read' in credentials:
+                credentials = credentials[action]
+            if 'key' in credentials:
+                credentials['aws_access_key_id'] = credentials.pop('key')
+            if 'secret' in credentials:
+                credentials['aws_secret_access_key'] = credentials.pop('secret')
+        else:
+            credentials = self.cnxnpipe.credentials.get(query_params={'role':action})[1]
         if not credentials:
             raise ValueError('No {} credentials provided, make sure pipe has credentials. '.format('write' if write else 'read'))
         return credentials
+
+    def _reset_credentials(self):
+        self.cnxnpipe.credentials.get(query_params={'role':'read','renew':True})
 
     def _connect(self, write=False):
         credentials = self._get_credentials(write)
@@ -911,10 +960,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
                     cnxn = S3Client(**credentials)
         elif self.settings['protocol'] == 'ftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
-            if write:
-                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'])
-            else:
-                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'])
+            cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'])
         elif self.settings['protocol'] == 'sftp':
             from d6tpipe.luigi.ftp import RemoteFileSystem
             try:
@@ -924,10 +970,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             cnopts = pysftp.CnOpts()
             cnopts.hostkeys = None
 
-            if write:
-                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
-            else:
-                cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
+            cnxn = RemoteFileSystem(self.settings['location'], credentials['username'], credentials['password'], sftp=True, pysftp_conn_kwargs={'cnopts':cnopts})
         else:
             raise NotImplementedError('only s3 and ftp supported')
 

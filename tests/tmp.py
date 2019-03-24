@@ -4,12 +4,22 @@ api = d6tpipe.APIClient(profile='utest-local')
 # api.register('utest-local','a@b.com','utest-local')
 # api.login('utest-dev','utest-devpwd')
 
+"utest-d6tdev"
+
 cfg_name = 'utest-d6tfree'
 api.cnxn.pipes._(cfg_name).get()
 api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})
 
+pipe = d6tpipe.Pipe(api,'utest-d6tfree')
+pipe.pull()
+
 pipe = d6tpipe.Pipe(api,'utest-d6tfree-tmp')
 pipe.pull()
+
+cfg_name = 'test-ftp'
+api.cnxn.pipes._(cfg_name).get()
+api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})
+
 quit()
 # pipe.remove_orphans(['test.csv'],dryrun=False)
 pipe.remove_orphans('both', dryrun=True)['remote']
