@@ -105,28 +105,33 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
     """
 
-    def __init__(self, name):
+    def __init__(self, name, sortby='filename'):
         if not re.match(r'^[a-zA-Z0-9-]+$', name):
             raise ValueError('Invalid pipe name, needs to be alphanumeric [a-zA-Z0-9-]')
         self.name = name
+        self.sortby = sortby
 
     def _getfilter(self, include=None, exclude=None):
         return include, exclude
 
-    def scan_local_filenames(self):
-        return self.scan_local(names_only=True)[1]
+    def _files_sort(self, files, sortby=None):
+        sortby = self.sortby if sortby is None else sortby
+        sortby = 'name' if sortby=='filename' else sortby
+        sortby = 'modified_at' if sortby=='mod' else sortby
+        return _files_sort(files, sortby)
 
-    def scan_local(self, files=None, fromdb=False, include=None, exclude=None, names_only=False, on_not_exist='warn'):
+    def scan_local(self, include=None, exclude=None, attributes=False, sortby=None, files=None, fromdb=False, on_not_exist='warn'):
         """
 
         Get file attributes from local. To run before doing a pull/push
 
         Args:
-            files (list): override list of filenames
-            fromdb (bool): use files from local db, if false scans all files in pipe folder
             include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
             exclude (str): pattern of files to exclude
-            names_only (bool): return filenames only, without attributes
+            attributes (bool): return filenames with attributes
+            sortby (str): sort files this key. `name`, `mod`, `size`
+            files (list): override list of filenames
+            fromdb (bool): use files from local db, if false scans all files in pipe folder
             on_not_exist (bool): how to handle missing files when creating file attributes
 
         Returns:
@@ -144,8 +149,8 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
             include, exclude = self._getfilter(include, exclude)
             files = _apply_fname_filter(files, include, exclude)
-            files = sorted(files)
-        if names_only: return [{'filename':s} for s in files], files
+            files = self._files_sort(files, sortby)
+        if not attributes: return _filenames(files)
 
         def getattrib(fname):
             p = Path(self.dirpath)/fname
@@ -162,27 +167,32 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
         return filesall, files
 
-    def filenames(self):
+    def files(self, include=None, exclude=None, sortby=None, check_exists=True, fromdb=False):
         """
 
-        Files in local db
+        Files synced in local repo
+
+        Args:
+            include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
+            exclude (str): pattern of files to exclude
+            sortby (str): sort files this key. `name`, `mod`, `size`
+            check_exists (bool): check files exist locally
 
         Returns:
             list: filenames
 
         """
-        files = _tinydb_last(self.dbfiles, 'local')
-        files = _files_sort(files, self.sortby)
-        return _filenames(files)
+        return self.filepaths(aspath=False, include=include, exclude=exclude, sortby=sortby, check_exists=check_exists, fromdb=fromdb)
 
-    def files(self, include=None, exclude=None, check_exists=True, aspathlib=True, fromdb=False):
+    def filepaths(self, include=None, exclude=None, sortby=None, check_exists=True, aspathlib=True, aspath=True, fromdb=True):
         """
 
-        Files in local db
+        Full path to Files synced in local repo
 
         Args:
             include (str): pattern of files to include, eg `*.csv` or `a-*.csv|b-*.csv`
             exclude (str): pattern of files to exclude
+            sortby (str): sort files this key. `name`, `mod`, `size`
             check_exists (bool): check files exist locally
             aspathlib (bool): return as pathlib object
 
@@ -191,40 +201,19 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
         """
 
-        fnames = _tinydb_last(self.dbfiles,'local') if fromdb else self.scan_local()[0]
-        fnames = _files_sort(fnames, self.sortby)
-        fnames = _apply_fname_filter(_filenames(fnames), include, exclude)
-        fnames = [self.dirpath/f for f in fnames]
+        files = _tinydb_last(self.dbfiles,'local') if fromdb else self.scan_local(attributes=True)[0]
+        files = self._files_sort(files, sortby)
+        fnames = _apply_fname_filter(_filenames(files), include, exclude)
 
         if check_exists:
-            [FileNotFoundError(fname) for fname in fnames if not fname.exists()]
-        if not aspathlib:
-            return [str(self.dirpath/f) for f in fnames]
+            [FileNotFoundError(fname) for fname in fnames if not (self.dirpath/fname).exists()]
+        if aspath:
+            if not aspathlib:
+                return [str(self.dirpath/f) for f in fnames]
+            else:
+                return [self.dirpath / f for f in fnames]
         else:
             return fnames
-
-    def files_one(self, name, check_exists=True):
-        """
-
-        File in local db
-
-        Args:
-            name (str): filename
-
-        Returns:
-            path: path to file, either `Pathlib` or `str`
-
-        Notes: for now simply use `pipe.dirpath/'filename'`, this function is for future functionality
-
-        """
-
-        if not name in self.dbfiles.all() and check_exists:
-            raise FileNotFoundError(name)
-        fname = self.dirpath/name
-        if not fname.exists() and check_exists:
-            raise FileNotFoundError(name)
-
-        return fname
 
     def import_files(self, files, subdir=None, move=False):
         """
@@ -302,7 +291,7 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
             c = 'y'
         if c=='y':
             if files=='all':
-                files = self.filenames_remote(cached=False)
+                files = self.scan_remote(cached=False)
             self._pullpush_luigi(files, op='remove')
 
     def delete_files_local(self, files=None, confirm=True, delete_all=None, ignore_errors=False):
@@ -331,7 +320,7 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
             if delete_all:
                 shutil.rmtree(self.dir, ignore_errors=ignore_errors)
             else:
-                [os.remove(self.dirpath/o['filename']) for o in _tinydb_last(self.dbfiles,'local')]
+                [f.unlink() for f in self.filepaths()]
             self.dbfiles.purge()
 
 class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
@@ -344,12 +333,12 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
         name (str): name of the data pipe
         profile (str): name of profile to use
         filecfg (str): path to where config file is stored
-        sortby (str): sort files this key. `filename`, `modified_at`, `size`
+        sortby (str): sort files this key. `name`, `mod`, `size`
 
     """
 
     def __init__(self, name, config=None, profile=None, filecfg='~/d6tpipe/cfg.json', sortby='filename'):
-        super().__init__(name)
+        super().__init__(name, sortby)
         self.profile = 'default' if profile is None else profile
         if config is None:
             self.configmgr = ConfigManager(filecfg=filecfg, profile=self.profile)
@@ -364,7 +353,6 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
         self.dir = str(self.dirpath) + os.sep
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
         self.dbfiles = self._db.table(name+'-files')
-        self.sortby = sortby
 
         # create db connection
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
@@ -384,7 +372,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         api (obj): API manager object
         name (str): name of the data pipe. Has to be created first
         mode (str): sync mode
-        sortby (str): sort files this key. `filename`, `modified_at`, `size`
+        sortby (str): sort files this key. `name`, `mod`, `size`
         credentials (dict): override credentials
 
     Note:
@@ -399,13 +387,12 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
     def __init__(self, api, name, mode='default', sortby='filename', credentials=None):
 
         # set params
-        super().__init__(name)
+        super().__init__(name, sortby)
         self.api = api
         self.api_islocal = api.__class__.__name__== 'APILocal'
         if not mode in _cfg_mode_valid:
             raise ValueError('Invalid mode, needs to be {}'.format(_cfg_mode_valid))
         self.mode = mode
-        self.sortby = sortby
 
         # get remote details
         self.cnxnapi = api.cnxn
@@ -488,7 +475,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         response, data = self.cnxnpipe.patch(config)
         return response, data
 
-    def scan_remote(self, cached=True):
+    def scan_remote(self, attributes=False, cached=True):
         """
 
         Get file attributes from remote. To run before doing a pull/push
@@ -502,73 +489,17 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         """
 
         c = self._cache_scan.get(0)
-        if cached and c is not None: return c
-
-        filesall, filenames = self._list_luigi()
-        response, data = (),filesall
-        self._cache_scan[0] = (response, data)
-        return response, data
-
-        # only local scan for now
-        raise NotImplementedError()
-        self.cnxnpipe.files.post(request_body=filesall)
-        if self.api.mode == 'local' or self.encrypted_remote or self.encrypted_pipe:
-            pass
+        if cached and c is not None:
+            response, data = c
         else:
-            response, data = self.cnxnpipe.scan.post()
-            # some type of loop to wait until job is finished
-            if response.status_code == 200:
-                if 'job_id' in data: # async mode?
-                    job_id = data['job_id']
-                    while True:
-                        response, data = self.cnxnpipe.jobs._(job_id).get()
-                        if data['status'] == 'running': # todo: implement server status
-                            time.sleep(5)
-                        elif data['status'] == 'complete':
-                            break
-                        elif data['status'] == 'error':
-                            raise NotImplementedError()
-                        else:
-                            raise ValueError(['Invalid task status', data['status']])
+            filesall, filenames = self._list_luigi()
+            response, data = (),filesall  # REST API style, for future to return from API
+            self._cache_scan[0] = (response, data)
 
-        response, data = self.cnxnpipe.files.get()
-        self._cache_scan[0] = (response, data)
-        return response, data
-
-    def filenames_remote(self, cached=True):
-        """
-
-        Get file attributes from remote. To run before doing a pull/push
-
-        Args:
-            cached (bool): use cached results
-
-        Returns:
-            list: filenames with attributes
-
-        """
-
-        return _filenames(self.scan_remote(cached)[1])
-
-    def list_remote(self, filesnames=False, fromdb=False):
-        """
-
-        Get remote file attributes from local db
-
-        Args:
-            filesnames (bool): return only filenames not all file attributes
-            fromdb (bool): if False do remote scan, if True get from local file db
-
-        Returns:
-            list: filenames with attributes
-
-        """
-
-        filesall = _tinydb_last(self.dbfiles,'local') if fromdb else self.scan_remote()[1]
-        # filesall = self.cnxnpipe.files.get()[1] if fromdb else self.scan_remote()[1]
-        filesall = _files_sort(filesall, self.sortby)
-        filesall = _filenames(filesall) if filesnames else filesall
-        return filesall
+        if attributes:
+            return response, data
+        else:
+            return _filenames(data)
 
     def is_synced(self, israise=False):
         """
@@ -632,7 +563,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         if not cached:
             self._cache_scan.clear()
 
-        filesremote = self.scan_remote()[1]
+        filesremote = self.scan_remote(attributes=True)[1]
 
         if files is not None:
             filespull = files
@@ -648,7 +579,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         # check if any local files have changed
         fileslocal = _tinydb_last(self.dbfiles,'local')
-        fileslocalmod, _ = self.scan_local(files=[s for s in filespull if s in fileslocal])
+        fileslocalmod, _ = self.scan_local(files=[s for s in filespull if s in fileslocal], attributes=True)
         filesmod = _files_mod(fileslocal, fileslocalmod)
 
         if filesmod:
@@ -664,7 +595,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         filessync = self._pullpush_luigi(filespull, 'get')
 
         # scan local files after pull
-        fileslocal, _ = self.scan_local(files=filessync)
+        fileslocal, _ = self.scan_local(files=filessync, attributes=True)
 
         # update db
         _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
@@ -732,7 +663,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             fileslocal, _ = self.scan_local(fromdb=True)
         else:
             filesremote = _tinydb_last(self.dbfiles, 'local')
-            fileslocal, _ = self.scan_local(fromdb=fromdb)
+            fileslocal, _ = self.scan_local(fromdb=fromdb, attributes=True)
             if self.mode !='all': self.is_synced(israise=True)
             filespush = _files_diff(fileslocal, filesremote, self.mode, include, exclude, nrecent)
 
@@ -744,7 +675,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         filessync = self._pullpush_luigi(filespush, 'put')
 
         # get files on remote after push
-        filesremote = self.scan_remote(cached=False)[1]
+        filesremote = self.scan_remote(cached=False, attributes=True)[1]
 
         _tinydb_insert(self.dbfiles, filessync, filesremote, fileslocal)
 
@@ -781,8 +712,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             dryrun = True
 
         if files is None:
-            fileslocal = self.scan_local(names_only=True, fromdb=False)[0]
-            filesremote = self.scan_remote()[1]
+            fileslocal = self.scan_local(names_only=True, fromdb=False, attributes=True)[0]
+            filesremote = self.scan_remote(attributes=True)[1]
             filesrmlocal = []
             filesrmremote = []
 
