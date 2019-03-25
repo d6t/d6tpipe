@@ -39,6 +39,7 @@ d6tpipe is easy to get started but has many advanced features. The core concepts
    pipes
    permissions
    security
+   schema
    premium
    advremotes
    modules
