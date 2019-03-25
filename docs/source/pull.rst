@@ -4,7 +4,7 @@ Pull Files from Remote to Local
 What is a Pipe?
 ---------------------------------------------
 
-To pull files you need to connect to a pipe. A pipe is the main object that will interact with. It allows you to pull, push and access files. 
+To pull files, you connect to a data pipe. A data pipe lets you manage remote and local data files.
 
 Connecting to Pipes
 ---------------------------------------------
@@ -15,12 +15,23 @@ Connecting to a pipe is straight forward.
 
     import d6tpipe
     api = d6tpipe.api.APIClient()
+    api.list_pipes() # show available pipes
 
     pipe = d6tpipe.Pipe(api, 'pipe-name') # connect to a pipe
-    pipe.list_remote() # show files in remote
 
 
-Pulling Files
+Show remote files
+---------------------------------------------
+
+To show files in the remote storage, run ``pipe.scan_remote()``.
+
+.. code-block:: python
+
+    pipe = d6tpipe.Pipe(api, 'pipe-name') # connect to a pipe
+    pipe.scan_remote() # show remote files
+
+
+Pulling Files to Local
 ---------------------------------------------
 
 Pulling files will download files from the remote data repo to the local data repo. Typically you have to write a lot of code to download files and sync remote data sources. With d6tstack you can sync pull with just a few lines of python. 
@@ -67,17 +78,16 @@ Below is a list of useful functions. See the reference :ref:`modindex` for detai
 
     # advanced pull options
     pipe.pull(['a.csv']) # force pull on selected files
-    pipe.pull(include='*.csv',exclude=['backup*.csv','oldstuff/*.csv']) # apply file filters
+    pipe.pull(include='*.csv',exclude='private*.xlsx') # apply file filters
 
     # other useful operations
     api.list_local_pipes() # list pipes pulled
-    pipe = d6tpipe.pipe.Pipe(api, 'test', sortby='modified_at') # sort files by mod date
-    pipe.list_remote() # show files in remote
-    pipe.list_remote(sortby='modified_at') # sorted by modified date
+    pipe.files() # show synced files
+    pipe.scan_remote() # show files in remote
+    pipe.scan_remote(sortby='modified_at') # sorted by modified date
     pipe.is_synced() # any changes?
     pipe.remove_orphans() # delete orphan files
-    pipe.delete_all_local() # reset local repo
-    pipe.dbfiles.all() # inspect local files db
+    pipe.delete_files() # reset local repo
 
 
 Using Multipe Pipes

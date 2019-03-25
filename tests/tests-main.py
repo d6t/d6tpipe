@@ -158,7 +158,7 @@ class TestMain(object):
         if testcfg.get('local',False):
             settings['protocol']='s3'
             settings['options']={'remotepath': 's3://{}/'.format(cfg_settings_parent['location'])}
-        response, data = d6tpipe.api.upsert_pipe(api, settings)
+        response, data = d6tpipe.upsert_pipe(api, settings)
         assert cfg_parent_name in api.list_pipes()
         assert response.status_code == 201
         yield True
@@ -216,11 +216,11 @@ class TestMain(object):
         settings2 = settings.copy()
         settings2['name'] = cfg_parent_name+'2'
         settings2["options"] = {'dir':'dir1'}
-        response, data = d6tpipe.api.upsert_pipe(api, settings2)
+        response, data = d6tpipe.upsert_pipe(api, settings2)
         r, d = api.cnxn.pipes.get()
         assert len(d)==2
         settings2["options"] = {'dir':'dir2'}
-        response, data = d6tpipe.api.upsert_pipe(api, settings2)
+        response, data = d6tpipe.upsert_pipe(api, settings2)
         assert api.cnxn.pipes._(settings2['name']).get()[1]["options"]['dir'] == "dir2"
 
         r, d = api.cnxn.pipes._(settings2['name']).delete()
@@ -245,7 +245,7 @@ class TestMain(object):
             settings['protocol']='s3'
             settings['credentials']=cfg_settings_parent['credentials']
             settings['options']={**settings['options'],**{'remotepath': 's3://{}/{}'.format(cfg_settings_parent['location'],cfg_settings_pipe['options']['dir'])}}
-        response, data = d6tpipe.api.upsert_pipe(api, settings)
+        response, data = d6tpipe.upsert_pipe(api, settings)
         assert cfg_pipe_name in api.list_pipes()
         yield True
 
@@ -367,7 +367,9 @@ class TestMain(object):
          'ca62a122993494e763fd1676cce95e76']
 
         # assert False
-        r, d = pipe.scan_remote()
+        assert pipe.files() == []
+        assert pipe.scan_remote() == cfg_filenames_chk
+        r, d = pipe.scan_remote(attributes=True)
         assert _filenames(d) == cfg_filenames_chk
         assert [o['crc'] for o in d]==cfg_chk_crc
 
@@ -377,17 +379,17 @@ class TestMain(object):
         assert pipe.pull_preview() == []
         assert api.list_local_pipes()==[pipe.name]
 
-        assert pipe.filenames() == cfg_filenames_chk
-        assert pipe.files() == [Path(pipe.dirpath)/f for f in pipe.filenames()]
-        assert pipe.files(aspathlib=False) == [str(Path(pipe.dirpath)/f) for f in pipe.filenames()]
+        assert pipe.files() == cfg_filenames_chk
+        assert pipe.filepaths() == [Path(pipe.dirpath)/f for f in pipe.files()]
+        assert pipe.filepaths(aspathlib=False) == [str(Path(pipe.dirpath)/f) for f in pipe.files()]
 
         pipe = getpipe(api, chk_empty=False, mode='all')
         assert pipe.pull_preview() == cfg_filenames_chk
 
         # PipeLocal
         pipelocal = d6tpipe.PipeLocal(pipe.name,profile=cfg_profile, filecfg=cfg_cfgfname)
-        assert pipelocal.filenames() == cfg_filenames_chk
-        assert pipelocal.scan_local_filenames() == cfg_filenames_chk
+        assert pipelocal.files() == cfg_filenames_chk
+        assert pipelocal.scan_local() == cfg_filenames_chk
         assert pipelocal.schema == cfg_settings_pipe['schema']
         df = pd.read_csv(pipe.dirpath/cfg_filenames_chk[0], **pipe.schema['pandas'])
 
@@ -411,6 +413,7 @@ class TestMain(object):
         api = getapi(testcfg.get('local',False))
         pipe = getpipe(api, chk_empty=False)
         pipe.delete_files_local(confirm=False,delete_all=True)
+        assert pipe.scan_local()==[]
         pipe = getpipe(api)
         with pytest.raises(PushError):
             pipe.push_preview()
@@ -420,6 +423,8 @@ class TestMain(object):
         cfg_copyfile = 'test.csv'
         df = pd.DataFrame({'a':range(10)})
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
+        assert set(pipe.scan_local())==set(cfg_filenames_chk+[cfg_copyfile])
+        assert pipe.files()==cfg_filenames_chk
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
         assert pipe.push_preview()==[]
@@ -432,7 +437,13 @@ class TestMain(object):
         assert pipe.push_preview()==[]
         (pipe.dirpath/cfg_copyfile2).unlink()
 
-        # todo: exclude unit test
+        # todo: push exclude
+
+        # files() works
+        assert pipe.files()==cfg_filenames_chk+[cfg_copyfile]
+        assert pipe.files(include='Machine*.csv')==cfg_filenames_chk
+        assert pipe.files(exclude='Machine*.csv')==[cfg_copyfile]
+        assert pipe.files(sortby='mod')[-1]==cfg_copyfile
 
         # crc works
         df2 = pd.read_csv(pipe.dirpath/cfg_copyfile, **pipe.schema['pandas'])
@@ -457,6 +468,7 @@ class TestMain(object):
 
         # cleanup
         pipe.delete_files_local(confirm=False,delete_all=True)
+        assert pipe.scan_local()==[]
 
         # def test_pipes_includeexclude(self, cleanup, parentinit, pipeinit, testcfg):
     #     pass
@@ -496,12 +508,12 @@ class TestMain(object):
 
     def test_d6tfree(self, cleanup, signup, testcfg):
         if not testcfg.get('local',False):
-            # assert False
+
             cfg_name = 'utest-d6tfree'
             api = getapi(testcfg.get('local', False))
 
             # test quick create
-            d6tpipe.api.upsert_pipe(api, {'name': cfg_name, 'protocol': 'd6tfree'})
+            d6tpipe.upsert_pipe(api, {'name': cfg_name, 'protocol': 'd6tfree'})
             r, d = api.cnxn.pipes._(cfg_name).get()
             assert cfg_usr in d['options']['remotepath'] and cfg_name in d['options']['remotepath'] and d['protocol']=='s3'
             cred_read = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})[1]
@@ -559,16 +571,56 @@ class TestMain(object):
 
             # cleanup
             pipe.delete_files_remote(confirm=False)
-            assert pipe.filenames_remote(cached=False)==[]
+            assert pipe.scan_remote(cached=False)==[]
             pipe.delete_files_local(confirm=False,delete_all=True)
+
+    def test_intro_stat_learning(self, cleanup, signup, testcfg):
+        cfg_name = cfg_settings_islr['name']
+        cfg_filenames_islr = ['Advertising.csv', 'Advertising2.csv', 'Auto.csv', 'Ch10Ex11.csv', 'College.csv', 'Credit.csv', 'Heart.csv', 'Income1.csv', 'Income2.csv', 'LICENSE', 'README.md']
+
+        # start with local repo
+        pipelocal = d6tpipe.PipeLocal(cfg_name, profile=cfg_profile, filecfg=cfg_cfgfname)
+        pipelocal.delete_files_local(confirm=False,delete_all=False)
+        pipelocal.import_dir('tests/d6tpipe-files1/files/utest-d6tdev/intro-stat-learning/')
+        assert pipelocal.scan_local() == cfg_filenames_islr
+        assert pipelocal.files() == []
+        assert pipelocal.files(fromdb=False) == cfg_filenames_islr
+
+        df = pd.read_csv(pipelocal.dirpath/'Advertising.csv')
+        assert not df.empty
+
+        if not testcfg.get('local', False):
+            # set up public repo
+            api = getapi()
+            d6tpipe.upsert_pipe(api, cfg_settings_islr)
+            d6tpipe.upsert_permissions(api, cfg_name, {"username": 'public', "role": "read"})
+            pipe = d6tpipe.Pipe(api,cfg_name,mode='all')
+            assert pipe.push()==cfg_filenames_islr
+
+            api2 = getapi2()
+            pipe = d6tpipe.Pipe(api2,cfg_name)
+            pipe.delete_files_local(confirm=False, delete_all=False)
+            assert pipe.pull()==cfg_filenames_islr
+
+            df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.schema['pandas'])
+            assert not df.empty
+
+            import dask.dataframe as dd
+            files = pipe.filepaths(include='Advertising*.csv')
+            ddf = dd.read_csv(files, **pipe.schema['dask'])
+            assert not ddf.compute().empty
+
+            # todo: check have readme and license
+
+        pipelocal.delete_files_local(confirm=False,delete_all=True)
 
     def test_sftp(self, cleanup, signup, testcfg):
         cfg_name = cfg_settings_pipe_sftp['name']
         api = getapi(testcfg.get('local', False))
 
         # test quick create
-        d6tpipe.api.upsert_pipe(api, cfg_settings_parent_sftp)
-        d6tpipe.api.upsert_pipe(api, cfg_settings_pipe_sftp)
+        d6tpipe.upsert_pipe(api, cfg_settings_parent_sftp)
+        d6tpipe.upsert_pipe(api, cfg_settings_pipe_sftp)
 
         # test paths
         r,d = api.cnxn.pipes._(cfg_settings_parent_sftp['name']).get()
@@ -583,7 +635,7 @@ class TestMain(object):
         cfg_copyfile = 'test.csv'
         df = pd.DataFrame({'a':range(10)})
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
-        assert pipe.filenames_remote(cached=False)==[]
+        assert pipe.scan_remote(cached=False)==[]
         assert pipe.pull()==[]
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
@@ -592,7 +644,7 @@ class TestMain(object):
 
         # cleanup
         pipe.delete_files_remote(confirm=False)
-        assert pipe.filenames_remote(cached=False)==[]
+        assert pipe.scan_remote(cached=False)==[]
         pipe.delete_files_local(confirm=False,delete_all=True)
 
 
@@ -601,7 +653,7 @@ class TestMain(object):
         api = getapi(testcfg.get('local', False))
 
         # test quick create
-        d6tpipe.api.upsert_pipe_json(api, 'tests/.creds-test.json', 'pipe-test-ftp')
+        d6tpipe.upsert_pipe_json(api, 'tests/.creds-test.json', 'pipe-test-ftp')
         cfg_name = 'test-ftp'
 
         # test paths
@@ -613,7 +665,7 @@ class TestMain(object):
         cfg_copyfile = 'test.csv'
         df = pd.DataFrame({'a':range(10)})
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
-        assert pipe.filenames_remote(cached=False)==[]
+        assert pipe.scan_remote(cached=False)==[]
         assert pipe.pull()==[]
         # assert False
         assert pipe.push_preview()==[cfg_copyfile]
@@ -621,7 +673,7 @@ class TestMain(object):
         pipe._cache_scan.clear()
         assert pipe.pull()==[cfg_copyfile]
         pipe.delete_files(confirm=False,all_local=True)
-        assert pipe.filenames_remote(cached=False)==[]
+        assert pipe.scan_remote(cached=False)==[]
 
 
 

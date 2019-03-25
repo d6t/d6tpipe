@@ -1,4 +1,4 @@
 Accessing Premium Features
 ==============================================
 
-To get instructions on how to access premium features, email support@databolt.tech
+To request access premium features, visit https://pipe.databolt.tech/gui/request-premium/

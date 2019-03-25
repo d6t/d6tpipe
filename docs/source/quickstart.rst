@@ -10,10 +10,10 @@ First-time setup and registration
     d6tpipe.api.ConfigManager().init() # just once
 
     # register with cloud repo API
-    api = d6tpipe.api.APIClient() # you likely get a messaging asking to register
+    api = d6tpipe.api.APIClient() # you likely get a message asking to register
     api.register('your-username','your@email.com','password') # fill in your details
 
-All set! In the future, you may need to log in to d6tpipe on another machine after you already registered, call `login()` instead of `register()`.
+That's it, all set! In the future, you may need to log in to d6tpipe on another machine after you already registered, call `login()` instead of `register()`.
 
 .. code-block:: python
 
@@ -27,7 +27,7 @@ See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details.
 Pull files from remote to local
 ----------------------------------
 
-To pull files, you need to connect to a data pipe. The data pipe allows you to manage the data files.
+To pull files, you connect to a data pipe. A data pipe lets you manage remote and local data files.
 
 .. code-block:: python
     
@@ -53,11 +53,11 @@ Access and read local files
     import d6tpipe
     api = d6tpipe.api.APIClient()
     pipe = d6tpipe.Pipe(api, 'intro-stat-learning') # connect to a data pipe
-    print(pipe.filenames_remote()) # show remote files
+    print(pipe.scan_remote()) # show remote files
     pipe.pull() # download files to local
 
     # show local files
-    print(pipe.filenames())
+    print(pipe.files())
 
     # read a file into pandas
     import pandas as pd
@@ -71,18 +71,18 @@ Process files
 
 .. code-block:: python
 
-    # use readParams to quickly load data
-    df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.readparams['pandas'])
+    # use schema to quickly load data
+    df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.schema['pandas'])
     print(df.head())
 
     # read multiple files into dask
     import dask.dataframe as dd
-    files = pipe.files(include='Advertising*.csv')
-    ddf = dd.read_csv(files, **pipe.readparams['dask'])
+    files = pipe.filepaths(include='Advertising*.csv')
+    ddf = dd.read_csv(files, **pipe.schema['dask'])
     print(ddf.head())
 
     # open most recent CSV
-    df = pd.read_csv(pipe.files(include='*.csv')[-1])
+    df = pd.read_csv(pipe.files(sortby='mod')[-1])
 
     # save data to local files
     df.to_csv(pipe.dirpath/'new.csv')
@@ -105,7 +105,7 @@ If you have been given write access or have your own pipes, you can also push fi
     import pandas as pd
     api = d6tpipe.api.APIClient()
     pipe = d6tpipe.pipe.Pipe(api, 'intro-stat-learning')
-    df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.readparams['pandas'])
+    df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.schema['pandas'])
     
     # conveniently process and save files in a central repo
     import sklearn.preprocessing
@@ -113,10 +113,10 @@ If you have been given write access or have your own pipes, you can also push fi
     df_scaled.to_csv(pipe.dirpath/'Advertising-scaled.csv') # pipe.dirpath points to local pipe folder
 
     # alternatively, import another folder
-    pipe.import_dir('/some/folder')
+    pipe.import_dir('/some/folder/')
 
     # list files in local directory
-    print(pipe.scan_local_filenames())
+    print(pipe.scan_local())
 
     # upload files - just one command!
     pipe.push_preview() # preview files and size
@@ -150,11 +150,11 @@ After you've created a remote or pipe, you can manage access permissions. By def
     api = d6tpipe.api.APIClient()
 
     # give another user access
-    settings = {"user":"another-user","role":"read"} # read, write, admin
+    settings = {"username":"another-user","role":"read"} # read, write, admin
     d6tpipe.upsert_permissions(api, 'your-pipe', settings)
 
     # make data repo public
-    settings = {"user":"public","role":"read"}
+    settings = {"username":"public","role":"read"}
     d6tpipe.upsert_permissions(api, 'your-pipe', settings)
 
 See :doc:`Permissions <../remotes>` for details.

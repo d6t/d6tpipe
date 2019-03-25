@@ -1,41 +1,29 @@
 Create and Manage Pipes
 ==============================================
 
-What is a pipe, technically?
+Managed Remote Data Stores
 ---------------------------------------------
 
-Conceptually, a pipe is a "visualization" layer on top of a  :doc:`remote <../remotes>`. You can and should have multipe pipes that connect to the same remote. In other words, a pipe is conceptually similar to a dataset, that is files that **logically belong together** and have similar read parameters.
+This section covers managed remotes where remote data files are stored in a DataBolt AWS S3 bucket with permissions and credentials managed on your behalf. For details see :doc:`security <../security>`
 
-Say for example your remote has the file structure:
-
-| ``dataA\\daily*.csv``  
-| ``dataA\\monthly*.csv``  
-| ``dataB\\reports*.xlsx``  
-
-Those are 3 different datasets, so you should define 3 separate pipes: ``dataA-daily``, ``dataA-monthly``, ``dataB-reports``.
-
-
-Creating Pipes
+Creating Managed Pipes
 ---------------------------------------------
 
-**Before you can create a pipe, you need to** :doc:`create a remote <../remotes>` or have admin permissions to one.
-
-Creating pipes is very similar to creating remotes, you POST to the rest API. 
+Normally creating remote data files stores has been complex, with d6tpipe you can do that exceptionally quickly.
 
 .. code-block:: python
 
     import d6tpipe.api
-    import d6tpipe.pipe
 
     api = d6tpipe.api.APIClient()
 
     settings = \
     {
         'name': 'pipe-name',
-        'remote': 'remote-name',
+        'protocol': 'd6tfree',
     }
 
-    response, data = d6tpipe.api.create_or_update(api.cnxn.pipes, settings)
+    response, data = d6tpipe.upsert_pipe(api, settings)
 
 
 **Parameters**
@@ -43,7 +31,7 @@ Creating pipes is very similar to creating remotes, you POST to the rest API.
 * ``name`` (str): unique name
 * ``remote`` (str): name of remote
 * ``settings`` (json): 
-    * ``pipedir`` (str): read/write from/to this subdir (auto created)
+    * ``dir`` (str): read/write from/to this subdir (auto created)
     * ``include`` (str): only include files with this pattern, eg ``*.csv`` or multiple with ``*.csv|*.xls``
     * ``exclude`` (str): exclude files with this pattern
 * ``readParams`` (json): any parameters you want to pass to the reader eg pandas
@@ -106,6 +94,20 @@ Here is how you update an existing pipe with more advanced settings. This will e
 
     # update an existing pipe with new settings
     response, data = d6tpipe.api.create_or_update(api.cnxn.pipes, settings)
+
+
+Pipe Inheritance?
+---------------------------------------------
+
+Conceptually, a pipe is a "visualization" layer on top of a  :doc:`remote <../remotes>`. You can and should have multipe pipes that connect to the same remote. In other words, a pipe is conceptually similar to a dataset, that is files that **logically belong together** and have similar read parameters.
+
+Say for example your remote has the file structure:
+
+| ``dataA\\daily*.csv``  
+| ``dataA\\monthly*.csv``  
+| ``dataB\\reports*.xlsx``  
+
+Those are 3 different datasets, so you should define 3 separate pipes: ``dataA-daily``, ``dataA-monthly``, ``dataB-reports``.
 
 
 Managing Pipes with repo API

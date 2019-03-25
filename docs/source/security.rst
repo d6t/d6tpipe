@@ -9,7 +9,7 @@ d6tpipe is designed such that only you have access to your data files, pipes and
 Where are my files stored and who has access to them?
 ------------------------------------------------------
 
-If you are using :doc:`managed remotes <../remotes>` they will be stored in a DataBolt AWS S3 bucket where permissions and credentials are managed on your behalf. Again, permissions are managed such that only you have access, unless you grant access. Contact <support@databolt.tech> for details and any concerns.
+If you are using :doc:`managed remotes <../pipes>` they will be stored in a DataBolt AWS S3 bucket where permissions and credentials are managed on your behalf. Again, permissions are managed such that only you have access, unless you grant access. Contact <support@databolt.tech> for details and any concerns.
 
 If you are using :doc:`self-hosted remotes <../advremotes>` you are in charge of where your data is stored and who has access to it. The repo API will store access credentials on behalf of authorized users. Those credentials can be encrypted, :doc:`see details <../advremotes>`.
 

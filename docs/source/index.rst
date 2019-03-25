@@ -37,7 +37,7 @@ d6tpipe is easy to get started but has many advanced features. The core concepts
    read
    push
    pipes
-   remotes
+   permissions
    security
    premium
    advremotes

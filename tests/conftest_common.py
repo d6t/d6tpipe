@@ -43,6 +43,12 @@ cfg_settings_pipe = {
     'schema': {'pandas': {'sep': ','} }
 }
 
+cfg_settings_islr = {
+    "name":'utest-intro-stat-learning',
+    'protocol': 'd6tfree',
+    'schema': {'pandas': {'index_col': 0}, 'dask': {'usecols': [1, 2, 3, 4]}}
+}
+
 cfg_settings_parent_sftp = {
     "name": cfg_parent_name+'-sftp',
     "protocol": "sftp",
@@ -94,8 +100,8 @@ def getpipe(api, chk_empty=True, mode='default', name=None):
     name = cfg_pipe_name if name is None else name
     pipe = d6tpipe.pipe.Pipe(api, name, mode=mode)
     if chk_empty:
-        assert pipe.filenames() == []
-        assert pipe.scan_local()[0] == []
+        assert pipe.files() == []
+        assert pipe.scan_local() == []
     return pipe
 
 @fuckit

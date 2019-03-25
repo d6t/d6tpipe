@@ -55,19 +55,33 @@ The best way to get started is to use the cloud API. As an alternative to the cl
     import d6tpipe
     api = d6tpipe.api.APILocal() # local mode
 
+Local mode requires you to manage more settings on your own (see below). Particularly you need to manage protocols and remote directories on your own.
+
+.. code-block:: python
+
+    # s3
+    settings['protocol']='s3'
+    settings['options']={'remotepath': 's3://bucketname/foldername'}
+    settings['options']={'remotepath': 's3://bucketname/foldername'}
+    d6tpipe.upsert_pipe(api, settings)
+
+
 Local vs Server Mode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The local mode stores everything locally so nothing ends up in the cloud. While that is fast and secure, it limits functionality. The server can:  
+The local mode stores everything locally so nothing ends up in the cloud. While that is fast and secure, it limits functionality. Only the server can:  
 
+* automatically manage local/remote paths
+* provide pipe inheritance
+* manage permissions
 * share remotes and pipes across teams and organizations
 * remotely scan for file changes and centrally cache results
 * regularly check for file changes on a schedule
 * remotely mirror datasets, eg from ftp to S3
 
-The way you interface with d6tpipe is pretty much identical between the two modes so you can easily switch between them. So you can start in local mode and then switch to server mode to take advantage of advanced features.
+Overall the way you interface with d6tpipe is pretty much identical between the two modes so you can easily switch between them. So you can start in local mode and then switch to server mode to take advantage of advanced features.
 
 Onprem repo API
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can deploy an onprem repo API, contact <support@databolt.tech> for details.
+You can deploy an onprem repo API to take advance of server functionality without using the cloud server, contact <support@databolt.tech> for details.

@@ -7,7 +7,7 @@ import warnings, logging
 from datetime import datetime
 from tinydb import TinyDB, Query
 from tinydb_serialization import SerializationMiddleware
-import cachetools, expiringdict
+import cachetools
 from tqdm import tqdm
 
 from d6tpipe.api import ConfigManager
@@ -111,12 +111,18 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
         self.name = name
         self.sortby = sortby
 
+    def _set_dir(self, dir):
+        self.filerepo = self.cfg_profile['filerepo']
+        self.dirpath = Path(self.filerepo)/dir
+        self.dirpath.mkdir(parents=True, exist_ok=True)  # create dir if doesn't exist
+        self.dir = str(self.dirpath) + os.sep
+
     def _getfilter(self, include=None, exclude=None):
         return include, exclude
 
     def _files_sort(self, files, sortby=None):
         sortby = self.sortby if sortby is None else sortby
-        sortby = 'name' if sortby=='filename' else sortby
+        sortby = 'filename' if sortby=='name' else sortby
         sortby = 'modified_at' if sortby=='mod' else sortby
         return _files_sort(files, sortby)
 
@@ -149,8 +155,6 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
 
             include, exclude = self._getfilter(include, exclude)
             files = _apply_fname_filter(files, include, exclude)
-            files = self._files_sort(files, sortby)
-        if not attributes: return _filenames(files)
 
         def getattrib(fname):
             p = Path(self.dirpath)/fname
@@ -165,9 +169,13 @@ class PipeBase(object, metaclass=d6tcollect.Collect):
         filesall = [getattrib(fname) for fname in files]
         filesall = [o for o in filesall if o is not None]
 
-        return filesall, files
+        filesall = self._files_sort(filesall, sortby)
+        if attributes:
+            return filesall, files
+        else:
+            return _filenames(filesall)
 
-    def files(self, include=None, exclude=None, sortby=None, check_exists=True, fromdb=False):
+    def files(self, include=None, exclude=None, sortby=None, check_exists=True, fromdb=True):
         """
 
         Files synced in local repo
@@ -348,11 +356,7 @@ class PipeLocal(PipeBase, metaclass=d6tcollect.Collect):
             warnings.warn("Using manual config override, some api functions might not work")
 
         self.cfg_profile = self.config
-        self.filerepo = self.cfg_profile['filerepo']
-        self.dirpath = Path(self.filerepo)/name
-        self.dir = str(self.dirpath) + os.sep
-        self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
-        self.dbfiles = self._db.table(name+'-files')
+        self._set_dir(self.name)
 
         # create db connection
         self._db = TinyDB(self.cfg_profile['filedb'], storage=_tdbserialization)
@@ -421,7 +425,6 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         self.dbconfig = self._db.table(name+'-cfg')
 
         self._cache_scan = cachetools.TTLCache(maxsize=1, ttl=5*60)
-        self._cache_creds = expiringdict.ExpiringDict(max_len=2, max_age_seconds=30*60)
 
         # connect msg
         msg = 'Successfully connected to pipe {}. '.format(self.name)
@@ -429,11 +432,6 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             msg += ' Read only access'
         print(msg)
         self.dbconfig.upsert({'name': self.name, 'pipe': self.settings}, Query().name == self.name)
-
-    def _set_dir(self, dir):
-        self.dirpath = Path(self.api.filerepo)/dir
-        self.dirpath.mkdir(parents=True, exist_ok=True)  # create dir if doesn't exist
-        self.dir = str(self.dirpath) + os.sep
 
     def _getfilter(self, include, exclude):
         if include is None:
@@ -461,7 +459,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         assert mode in _cfg_mode_valid
         self.mode = mode
 
-    def update_settings(self, config):
+    def update_settings(self, settings):
         """
 
         Update settings. Only keys present in the new dict will be updated, other parts of the config will be kept as is. In other words you can pass in a partial dict to update just the parts you need to be updated.
@@ -471,8 +469,8 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         """
 
-        self.settings.update(config)
-        response, data = self.cnxnpipe.patch(config)
+        self.settings.update(settings)
+        response, data = self.cnxnpipe.patch(self.settings)
         return response, data
 
     def scan_remote(self, attributes=False, cached=True):
@@ -660,7 +658,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         if files is not None:
             filespush = files
-            fileslocal, _ = self.scan_local(fromdb=True)
+            fileslocal, _ = self.scan_local(fromdb=True, attributes=True)
         else:
             filesremote = _tinydb_last(self.dbfiles, 'local')
             fileslocal, _ = self.scan_local(fromdb=fromdb, attributes=True)
@@ -712,7 +710,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             dryrun = True
 
         if files is None:
-            fileslocal = self.scan_local(names_only=True, fromdb=False, attributes=True)[0]
+            fileslocal = self.scan_local(attributes=True)[0]
             filesremote = self.scan_remote(attributes=True)[1]
             filesrmlocal = []
             filesrmremote = []
@@ -850,11 +848,6 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         # check role
         if write: self._has_write()
-
-        # get credentials from cache
-        credentials = self._cache_creds.get(action)
-        if credentials:
-            return credentials
 
         # get credentials from api
         if self.api_islocal:

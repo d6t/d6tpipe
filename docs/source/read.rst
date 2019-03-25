@@ -4,46 +4,53 @@ Read and Process Local Files
 Show Local Files
 ---------------------------------------------
 
-Files that are pulled from the remote get stored in a central local file directory. You can now easily access all your files from that central location.
+Files that are pulled from the remote get stored in a central local file directory. 
 
 .. code-block:: python
 
-    pipe.dirpath # local file location
-    pipe.filenames() # list all local files from remote
-    pipe.scan_local() # list all files in local data repo
+    pipe.dirpath # where local files are stored
+    pipe.files() # show synced local files
+    pipe.scan_local() # show all files in local storage
 
 Read Local Files
 ---------------------------------------------
 
-
+You now have a lot of powerful functions to easily access all your files from a central location across multiple projects.
 
 .. code-block:: python
 
     import pandas as pd
     df = pd.read_csv(pipe.dirpath/'test.csv') # open a file by name
-    df = pd.read_csv(pipe.dirpath / pipe.files()[0])  # open a file by index
 
-    import dask.dataframe as dd
-    df = dd.read_csv(pipe.files()).compute() # read multiple files into dask
+    # open most recent file
+    df = pd.read_csv(pipe.files(sortby='mod')[-1])
 
-Process Files
----------------------------------------------
-
-Using schema
+Applying File Filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``schema`` holds parameters settings to quickly load your data. This is only available if it has been set up by the pipe owner.
+You can include file filters to find specific files.
 
 .. code-block:: python
 
-    # show schema
-    print(pipe.schema)
+    files = pipe.files(include='data*.csv')
+    files = pipe.files(exclude=['backup*.csv','oldstuff/*.csv'])
 
-    # use schema
-    df = pd.read_csv(pipe.dirpath/'test.csv', **pipe.schema['pandas'])
-    df = dd.read_csv(pipe.dirpath/'test.csv', **pipe.schema['dask'])
-    df = pd.read_excel(pipe.dirpath/'others.xlsx', **pipe.schema['xls']['pandas'])
+Read multiple files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+You can read multiple files at once.
+
+.. code-block:: python
+
+    # read multiple files into dask
+    import dask.dataframe as dd
+    files = pipe.filepaths(include='Advertising*.csv')
+    ddf = dd.read_csv(files, **pipe.schema['dask'])
+    print(ddf.head())
+
+
+Process Files
+---------------------------------------------
 
 Write Processed Data to Pipe Directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,18 +67,7 @@ To keep all data in once place, it's best to save your processes data back to th
 Advanced Topics
 ---------------------------------------------
 
-Applying File Filters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You can include file filters to find specific files.
-
-.. code-block:: python
-
-    files = pipe.files(include='data*.csv')
-    files = pipe.files(exclude=['backup*.csv','oldstuff/*.csv'])
-
-
-Accessing without API
+Quickly accessing files without API
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you have pulled files but are unable to connect to the repo API, you can use `PipeLocal()` to access your files.
@@ -80,15 +76,11 @@ If you have pulled files but are unable to connect to the repo API, you can use 
 
     pipe = d6tpipe.PipeLocal('your-pipe')
 
-Useful File Operations
+Delete Files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Below is a list of useful functions. See the reference :ref:`modindex` for details.
 
 .. code-block:: python
 
-    # other useful operations
-    pipe.list_remote() # show files in remote
-    pipe.list_remote(sortby='modified_at') # sorted by modified date
-    pipe.delete_all_local() # reset local repo
-    pipe.dbfiles.all() # inspect local files db
+    pipe.delete_files_local() # delete files locally
+    pipe.delete_files(files=['a.csv']) # delete a file locally and remotely
+    pipe.reset() # reset local repo: delete all files and download
