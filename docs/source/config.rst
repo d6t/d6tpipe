@@ -20,15 +20,15 @@ The config by default this is in ``~/d6tpipe/cfg.json``. You can also load it to
     
     d6tpipe.api.ConfigManager().load()
 
-Where are files stored?
+Where are local files stored?
 ------------------------------
 
-d6tpipe stores all files in a central location to make it easy for you to reference data files across multiple projects. By default this is ``~/d6tpipe``.
+d6tpipe stores all files in a central location to make it easy for you to reference data files across multiple projects. Subfolders will be created for each pipe.
 
 .. code-block:: python
 
     # show local file repo AFTER init
-    print(api.filerepo)
+    api.filerepo
 
 
 Manage Local File Storage
@@ -48,19 +48,6 @@ You can change where files are stored locally.
 
     # option 3: manually move file repo and update config
     d6tpipe.api.ConfigManager().update({'filerepo':'/some/path/'})
-
-Setting Proxy
-------------------------------
-
-If you are behind a proxy, you may have to set your proxy to pull files.
-
-.. code-block:: python
-
-    import os
-    cfg_proxy = "http://yourip:port"
-    os.environ["http_proxy"] = cfg_proxy; os.environ["HTTP_PROXY"] = cfg_proxy;
-    os.environ["https_proxy"] = cfg_proxy; os.environ["HTTPS_PROXY"] = cfg_proxy;
-
 
 Advanced Topics
 ---------------------------------------------

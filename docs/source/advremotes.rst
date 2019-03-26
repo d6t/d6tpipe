@@ -1,10 +1,10 @@
 Advanced: Self-hosted Remotes
 ==============================================
 
-Creating Self-hosted Remotes
+Register Self-hosted Remotes
 ---------------------------------------------
 
-You can have users push/pull from your own S3 and (s)ftp resources. The repo API stores all the neccessary details so the data consumer does not have to make any changes if you make any changes to the remote storage.
+You can push/pull from your own S3 and (s)ftp resources. The repo API stores all the neccessary details so the data consumer does not have to make any changes if you make any changes to the remote storage.
 
 .. code-block:: python
 
@@ -35,7 +35,7 @@ Parameters
 * ``protocol`` (str): [s3, ftp, sftp]
 * ``location`` (str): s3 bucket, ftp server name/ip
 * ``credentials`` (json): credentials for pulling. s3: aws_access_key_id, aws_secret_access_key. ftp: username, password
-* ``settings`` (json): any settings to be shared across pipes
+* ``options`` (json): any options to be shared across pipes
     * ``dir`` (str): read/write from/to this subdir (auto created)
 * ``schema`` (json): any parameters you want to pass to the reader
 

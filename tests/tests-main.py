@@ -596,6 +596,8 @@ class TestMain(object):
             d6tpipe.upsert_permissions(api, cfg_name, {"username": 'public', "role": "read"})
             pipe = d6tpipe.Pipe(api,cfg_name,mode='all')
             assert pipe.push()==cfg_filenames_islr
+            pipelocal = d6tpipe.PipeLocal(cfg_name, profile=cfg_profile, filecfg=cfg_cfgfname)
+            assert len(pipelocal.schema)>0
 
             api2 = getapi2()
             pipe = d6tpipe.Pipe(api2,cfg_name)
@@ -609,6 +611,7 @@ class TestMain(object):
             files = pipe.filepaths(include='Advertising*.csv')
             ddf = dd.read_csv(files, **pipe.schema['dask'])
             assert not ddf.compute().empty
+            pipe.delete_files_local(confirm=False, delete_all=False)
 
             # todo: check have readme and license
 

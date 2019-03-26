@@ -10,7 +10,7 @@ First-time setup and registration
     d6tpipe.api.ConfigManager().init() # just once
 
     # register with cloud repo API
-    api = d6tpipe.api.APIClient() # you likely get a message asking to register
+    api = d6tpipe.api.APIClient() # you will get a message asking to register
     api.register('your-username','your@email.com','password') # fill in your details
 
 That's it, all set! In the future, you may need to log in to d6tpipe on another machine after you already registered, call `login()` instead of `register()`.
@@ -48,16 +48,13 @@ See :doc:`Pull Files<../pull>` for details.
 Access and read local files
 ------------------------------
 
+Remote files that are pulled get stored in a central local file directory. 
+
 .. code-block:: python
     
-    import d6tpipe
-    api = d6tpipe.api.APIClient()
-    pipe = d6tpipe.Pipe(api, 'intro-stat-learning') # connect to a data pipe
-    print(pipe.scan_remote()) # show remote files
-    pipe.pull() # download files to local
-
     # show local files
-    print(pipe.files())
+    pipe.dirpath # where files are stored
+    pipe.files()
 
     # read a file into pandas
     import pandas as pd
@@ -68,6 +65,8 @@ See :doc:`Read Files <../read>` for details.
 
 Process files
 ------------------------------
+
+You now have a lot of powerful functions to easily manage all your files from a central location across multiple projects.
 
 .. code-block:: python
 
@@ -94,29 +93,25 @@ Advanced Topics
 
 This covers pushing files and creating your own remote file storage and data pipes.
 
-Write and Push Local Files
+Write Local Files and Push to Remote
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you have been given write access or have your own pipes, you can also push files.
+You can easily save new files to the pipe. You can also push files from local to remote if you have write access or manage your own pipes.
 
 .. code-block:: python
-
-    import d6tpipe
-    import pandas as pd
-    api = d6tpipe.api.APIClient()
-    pipe = d6tpipe.pipe.Pipe(api, 'intro-stat-learning')
-    df = pd.read_csv(pipe.dirpath / 'Advertising.csv', **pipe.schema['pandas'])
     
-    # conveniently process and save files in a central repo
+    # create some new data
     import sklearn.preprocessing
     df_scaled = df.apply(lambda x: sklearn.preprocessing.scale(x))
+
+    # conveniently save files in a central repo
     df_scaled.to_csv(pipe.dirpath/'Advertising-scaled.csv') # pipe.dirpath points to local pipe folder
 
     # alternatively, import another folder
     pipe.import_dir('/some/folder/')
 
     # list files in local directory
-    print(pipe.scan_local())
+    pipe.scan_local()
 
     # upload files - just one command!
     pipe.push_preview() # preview files and size
@@ -124,25 +119,25 @@ If you have been given write access or have your own pipes, you can also push fi
 
 See :doc:`Push <../push>` for details.
 
-Create and manage pipes
+Register and administer pipes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You might want to create your own remote file storage that you control. d6tpipe makes it very easy for you to set up and manage professional remote data file storage.
+You can register your own pipes that point to your own remote data storage. d6tpipe has managed remotes which makes it very easy for you to set up and manage professional remote data file storage.
 
 .. code-block:: python
 
     import d6tpipe
     api = d6tpipe.api.APIClient()
     
-    # managed file stores can be created quickly with just one command 
+    # managed remote file stores can be created quickly with just one command 
     d6tpipe.api.upsert_pipe(api, {'name': 'your-data-files', 'protocol': 'd6tfree'})
 
-See :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Pipes <../advremotes>` .
+See :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Pipes <../advremotes>`.
 
-Share data repo
+Share pipes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-After you've created a remote or pipe, you can manage access permissions. By default only you have access so to share it with others you have to grant them access.
+After you've registered a pipe, you can give others access to the remote data. By default only you have access so to share it with others you have to grant them access.
 
 .. code-block:: python
 

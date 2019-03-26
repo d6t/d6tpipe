@@ -1,15 +1,10 @@
 Pull Files from Remote to Local
 ==============================================
 
-What is a Pipe?
----------------------------------------------
-
-To pull files, you connect to a data pipe. A data pipe lets you manage remote and local data files.
-
 Connecting to Pipes
 ---------------------------------------------
 
-Connecting to a pipe is straight forward. 
+To pull and push files, you connect to a data pipe. A data pipe lets you manage remote and local data files.  
 
 .. code-block:: python
 

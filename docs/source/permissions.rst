@@ -1,4 +1,4 @@
-Managine Permissions for Access Control
+Sharing Remote Data Storage
 ==============================================
 
 Managing Remote Access Permissions
@@ -33,7 +33,7 @@ You can specify what level of access a user has to your pipe.
 Invite User with email
 ---------------------------------------------
 
-If users are not registered with d6tpipe or you only know their email, you can access via email.
+If users are not registered with d6tpipe or you only know their email, you can grant access via email.
 
 .. code-block:: python
 

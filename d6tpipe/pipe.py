@@ -605,9 +605,9 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
             with open(self.dirpath/'README.md', 'r') as fhandle:
                 print(fhandle.read())
             print('############### README ###############')
-        if 'LICENSE' in filessync:
+        if 'LICENSE.md' in filessync:
             print('############### LICENSE ###############')
-            with open(self.dirpath/'LICENSE', 'r') as fhandle:
+            with open(self.dirpath/'LICENSE.md', 'r') as fhandle:
                 print(fhandle.read())
             print('############### LICENSE ###############')
 
@@ -679,13 +679,16 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
         return filessync
 
-    def reset(self):
+    def reset(self, delete=False):
         """
         Resets by deleting all files and pulling
         """
 
-        self._empty_local()
+        if delete:
+            self._empty_local()
+        self.setmode('all')
         self.pull()
+        self.setmode('default')
 
     def remove_orphans(self, files=None, direction='local', dryrun=None):
         """

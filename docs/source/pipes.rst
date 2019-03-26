@@ -1,71 +1,74 @@
-Create and Manage Pipes
+Register and Administer Pipes
 ==============================================
 
-Managed Remote Data Stores
+Why register pipes?
 ---------------------------------------------
 
-This section covers managed remotes where remote data files are stored in a DataBolt AWS S3 bucket with permissions and credentials managed on your behalf. For details see :doc:`security <../security>`
+To have a pipe point to a remote data storage that you control, you have to register a pipe. Normally creating remote data storage is a complex task. But with d6tpipe it is exceptionally quick by using managed pipes which automatically take care of storage, authentication, permissioning etc, see :doc:`security <../security>` for details. To register self-hosted pipes, see :doc:`Advanced Pipes <../advremotes>`.
 
-Creating Managed Pipes
+Register Managed Pipes
 ---------------------------------------------
 
-Normally creating remote data files stores has been complex, with d6tpipe you can do that exceptionally quickly.
+To register a new pipe you need pipe settings that specify how remote data is stored and returned. The minimum requirement is the name which creates a free remote data repo. [todo: make d6tpipe default protocol]
 
 .. code-block:: python
 
-    import d6tpipe.api
-
+    import d6tpipe
     api = d6tpipe.api.APIClient()
 
-    settings = \
-    {
-        'name': 'pipe-name',
-        'protocol': 'd6tfree',
-    }
-
-    response, data = d6tpipe.upsert_pipe(api, settings)
+    response, data = d6tpipe.upsert_pipe(api, {'name': 'your-pipe'})
 
 
-**Parameters**
-
-* ``name`` (str): unique name
-* ``remote`` (str): name of remote
-* ``settings`` (json): 
-    * ``dir`` (str): read/write from/to this subdir (auto created)
-    * ``include`` (str): only include files with this pattern, eg ``*.csv`` or multiple with ``*.csv|*.xls``
-    * ``exclude`` (str): exclude files with this pattern
-* ``readParams`` (json): any parameters you want to pass to the reader eg pandas
-
-
-readParams
+Customizing Pipe Settings
 ---------------------------------------------
 
-``readparams`` settings takes any data so you can use that in a variety of ways to pass parameters to the reader. This makes it easier for the data recipient to process your data files.
+Pipes not only store data but also control how data is stored, returned and provide additional meta data.
+
+**Settings Parameters**
+
+* ``name`` (str): unique name
+* ``protocol`` (str): storage protocol (``d6tfree``,``s3``,``ftp``,``sftp``)
+* ``options`` (json): 
+    * ``dir`` (str): read/write from/to this subdirectory (auto created)
+    * ``include`` (str): only include files with this pattern, eg ``*.csv`` or multiple with ``*.csv|*.xls``
+    * ``exclude`` (str): exclude files with this pattern
+* ``schema`` (json): see :doc:`Schema <../schema>`
+
+
+Pipe Inheritance
+---------------------------------------------
+
+You can and should have multipe pipes that connect to the same underlying remote file storage but return different files. Why? Say you are a data vendor, you can create different pipes for different subscriptions without having to individually manage them. Say the vendors data files are:
+
+| ``dataA\\monthly*.csv``  
+| ``dataA\\daily*.csv``  
+| ``dataB\\reports*.xlsx``  
+
+Those are 3 different datasets, so you should define 3 separate pipes: ``vendor-monthly``, ``vendor-daily``, ``vendor-reports``. To avoid having to specify the same settings multiple times, you can create a parent pipe ``vendor-parent`` from which the child pipes can inherit settings.
 
 .. code-block:: python
 
-    settings = \
-    {
-        'readParams': {
-            'pandas': {
-                'sep': ',',
-                'encoding': 'utf8'
-            },
-            'dask': {
-                'sep': ',',
-                'encoding': 'utf8'
-            },
-            'xls': {
-                'pandas': {
-                    'sheet_name':'Sheet1'
-                }
-            }
-        }
+    settings_parent = {
+        'name': 'vendor-parent',
+        'protocol': 'd6tfree'
+    }
+    settings_monthly = {
+        'name': 'vendor-monthly',
+        'parent': 'vendor-parent',
+        'options': {'dir':'dataA', 'include':'monthly*.csv'}
+    }
+    settings_daily = {
+        'name': 'vendor-daily',
+        'parent': 'vendor-parent',
+        'options': {'dir':'dataA', 'include':'daily*.csv'}
+    }
+    settings_reports = {
+        'name': 'vendor-reports',
+        'parent': 'vendor-parent',
+        'options': {'dir':'dataB', 'include':'reports*.xlsx'}
     }
 
-    pipe.cnxnpipe.patch(settings) # update settings
-
-The flexibility is good but you might want to consider adhering to metadata specifications such as https://frictionlessdata.io/specs/.
+This way the vendor can push files to ``vendor-parent`` and then grant clients individual access to ``vendor-monthly``, ``vendor-daily``, ``vendor-reports`` based on which product they have subscribed to.
 
 
 Updating Pipe Settings
@@ -79,12 +82,12 @@ Here is how you update an existing pipe with more advanced settings. This will e
     {
         'name': 'pipe-name',
         'remote': 'remote-name',
-        'settings': {
-            'remotedir': 'some/folder',
+        'options': {
+            'dir': 'some/folder',
             'include': '*.csv|*.xls',
             'exclude': 'backup*.csv|backup*.xls'
         },
-        'readParams': {
+        'schema': {
             'pandas': {
                 'sep': ',',
                 'encoding': 'utf8'
@@ -93,24 +96,16 @@ Here is how you update an existing pipe with more advanced settings. This will e
     }
 
     # update an existing pipe with new settings
-    response, data = d6tpipe.api.create_or_update(api.cnxn.pipes, settings)
+    response, data = d6tpipe.upsert_pipe(api, settings)
 
 
-Pipe Inheritance?
+Data Schemas
 ---------------------------------------------
 
-Conceptually, a pipe is a "visualization" layer on top of a  :doc:`remote <../remotes>`. You can and should have multipe pipes that connect to the same remote. In other words, a pipe is conceptually similar to a dataset, that is files that **logically belong together** and have similar read parameters.
-
-Say for example your remote has the file structure:
-
-| ``dataA\\daily*.csv``  
-| ``dataA\\monthly*.csv``  
-| ``dataB\\reports*.xlsx``  
-
-Those are 3 different datasets, so you should define 3 separate pipes: ``dataA-daily``, ``dataA-monthly``, ``dataB-reports``.
+When creating pipes you can add schema information see :doc:`Schema <../schema>`
 
 
-Managing Pipes with repo API
+Administer Pipes with repo API
 ---------------------------------------------
 
 You can run any CRUD operations you can normally run on any REST API.

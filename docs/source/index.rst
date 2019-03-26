@@ -1,15 +1,9 @@
 Push and pull data files like code
 ==============================================
 
-d6tpipe is a python library which makes it easier to exchange data files. It's like git for data! But better because you can include it in your data science code.
+d6tpipe is a python library which makes it easier to manage and exchange data files for data science projects. It's like git for data! But better because you can include it in your data science code.
 
-Use cases:
-------------------------
-
-* a data vendor wants to send data to a client
-* a data engineer gives data to data scientists
-* a teacher gives data for students to work on 
-* you sync data between your laptop and desktop
+For more details see https://github.com/d6t/d6tpipe
 
 Installation
 ------------------------
@@ -40,6 +34,7 @@ d6tpipe is easy to get started but has many advanced features. The core concepts
    permissions
    security
    schema
+   document
    premium
    advremotes
    modules

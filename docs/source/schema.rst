@@ -34,7 +34,7 @@ The flexibility is good but you might want to consider adhering to metadata spec
 Using schema
 ---------------------------------------------
 
-``schema`` holds parameters settings to quickly load your data. This is only available if it has been set up by the pipe owner.
+You can pass ``schema`` information for downstream processing.
 
 .. code-block:: python
 
