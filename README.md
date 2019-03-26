@@ -75,7 +75,7 @@ http://www-bcf.usc.edu/~gareth/ISL/data.html
 # read a file into pandas from central repo with correct settings
 
 import pandas as pd
-df = pd.read_csv(pipe.dirpath/'Advertising.csv', **pipe.readparams['pandas']) 
+df = pd.read_csv(pipe.dirpath/'Advertising.csv', **pipe.schema['pandas']) 
 df.head(2)      
 '''
       TV  radio  newspaper  sales
