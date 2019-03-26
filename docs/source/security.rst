@@ -4,7 +4,7 @@ Data Security
 Is my data secure?
 ---------------------------------------------
 
-d6tpipe is designed such that only you have access to your data files, pipes and remotes. You explicity have to grant access for someone else to see your files.
+d6tpipe is designed such that only you have access to your pipes and data files. You explicity have to grant access for someone else to see your files.
 
 Where are my files stored and who has access to them?
 ------------------------------------------------------

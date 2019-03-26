@@ -51,7 +51,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
-    scenarios = [scenario2]
+    scenarios = [scenario4]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
     # scenarios = [scenario4, scenario5]
@@ -103,6 +103,7 @@ class TestMain(object):
             token2 = getapi2().register(cfg_usr2, cfg_usr2+'@domain.com', cfg_usrpwd)
             # getconfig(cfg_profile2).update({'token':token2})
 
+
         else:
             token=''; token2='';
 
@@ -117,6 +118,7 @@ class TestMain(object):
             return True
 
         token, token2 = signup
+        d6tpipe.list_profiles()
 
         # can't register again
         with pytest.warns(UserWarning):
@@ -513,7 +515,7 @@ class TestMain(object):
             api = getapi(testcfg.get('local', False))
 
             # test quick create
-            d6tpipe.upsert_pipe(api, {'name': cfg_name, 'protocol': 'd6tfree'})
+            d6tpipe.upsert_pipe(api, {'name': cfg_name})
             r, d = api.cnxn.pipes._(cfg_name).get()
             assert cfg_usr in d['options']['remotepath'] and cfg_name in d['options']['remotepath'] and d['protocol']=='s3'
             cred_read = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})[1]
@@ -576,12 +578,12 @@ class TestMain(object):
 
     def test_intro_stat_learning(self, cleanup, signup, testcfg):
         cfg_name = cfg_settings_islr['name']
-        cfg_filenames_islr = ['Advertising.csv', 'Advertising2.csv', 'Auto.csv', 'Ch10Ex11.csv', 'College.csv', 'Credit.csv', 'Heart.csv', 'Income1.csv', 'Income2.csv', 'LICENSE', 'README.md']
+        cfg_filenames_islr = ['Advertising.csv', 'Advertising2.csv', 'Auto.csv', 'Ch10Ex11.csv', 'College.csv', 'Credit.csv', 'Heart.csv', 'Income1.csv', 'Income2.csv', 'LICENSE.md', 'README.md']
 
         # start with local repo
         pipelocal = d6tpipe.PipeLocal(cfg_name, profile=cfg_profile, filecfg=cfg_cfgfname)
         pipelocal.delete_files_local(confirm=False,delete_all=False)
-        pipelocal.import_dir('tests/d6tpipe-files1/files/utest-d6tdev/intro-stat-learning/')
+        pipelocal.import_dir('tests/intro-stat-learning/')
         assert pipelocal.scan_local() == cfg_filenames_islr
         assert pipelocal.files() == []
         assert pipelocal.files(fromdb=False) == cfg_filenames_islr
@@ -595,6 +597,8 @@ class TestMain(object):
             d6tpipe.upsert_pipe(api, cfg_settings_islr)
             d6tpipe.upsert_permissions(api, cfg_name, {"username": 'public', "role": "read"})
             pipe = d6tpipe.Pipe(api,cfg_name,mode='all')
+            pipe.delete_files_remote(confirm=False)
+            assert pipe.scan_remote(cached=False) == []
             assert pipe.push()==cfg_filenames_islr
             pipelocal = d6tpipe.PipeLocal(cfg_name, profile=cfg_profile, filecfg=cfg_cfgfname)
             assert len(pipelocal.schema)>0
@@ -612,8 +616,6 @@ class TestMain(object):
             ddf = dd.read_csv(files, **pipe.schema['dask'])
             assert not ddf.compute().empty
             pipe.delete_files_local(confirm=False, delete_all=False)
-
-            # todo: check have readme and license
 
         pipelocal.delete_files_local(confirm=False,delete_all=True)
 
@@ -677,6 +679,39 @@ class TestMain(object):
         assert pipe.pull()==[cfg_copyfile]
         pipe.delete_files(confirm=False,all_local=True)
         assert pipe.scan_remote(cached=False)==[]
+
+    @pytest.fixture(scope="class")
+    def setup_demo(self, testcfg):
+        if not testcfg.get('local',False):
+            iprofile = 'demo'
+            d6tpipe.api.ConfigManager(profile=iprofile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
+            cleaner(getapi(profile=iprofile),iprofile)
+            api = getapi(profile=iprofile)
+            api.register(iprofile, iprofile + '@domain.com', iprofile+'password')
+            yield api
+            with fuckit:
+                api.cnxn.pipes._(iprofile).delete()
+            api._unregister(iprofile)
+            cleaner(getapi(profile=iprofile),iprofile)
+        else:
+            yield True
+
+    def test_demo(self, testcfg, setup_demo):
+        if not testcfg.get('local',False):
+            iprofile = 'demo'
+            api = setup_demo
+            with pytest.raises(APIError, match='cannot register pipes'):
+                d6tpipe.upsert_pipe(api,{'name':iprofile})
+
+    def test_public(self, testcfg):
+        if not testcfg.get('local',False):
+            iprofile = 'public'
+            d6tpipe.api.ConfigManager(profile=iprofile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
+            cleaner(getapi(profile=iprofile),iprofile)
+            api = getapi(profile=iprofile)
+            with pytest.raises(APIError, match='Username'):
+                api.register(iprofile, iprofile+'@domain.com', iprofile)
+            cleaner(getapi(profile=iprofile),iprofile)
 
 
 

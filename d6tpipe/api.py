@@ -167,7 +167,7 @@ class _APIBase(metaclass=d6tcollect.Collect):
         if parent_only:
             r = [o for o in r if not r['parent']] # todo: check
         if names_only:
-            r = [o['name'] for o in r]
+            r = sorted([o['name'] for o in r])
         return r
 
     def wipe_all(self, confirm=True):

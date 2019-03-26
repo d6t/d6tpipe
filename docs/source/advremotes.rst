@@ -24,7 +24,7 @@ You can push/pull from your own S3 and (s)ftp resources. The repo API stores all
         }
     }
 
-    d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
+    d6tpipe.upsert_pipe(api, settings)
 
 Most resources in d6tpipe are managed in an REST API type interface so you will be using the API client to define resources like remotes, pipes, permission etc. That way you can easily switch between local and server deployment without having to change your code.
 
@@ -85,12 +85,12 @@ Here is a recipe for loading settings from json and yaml files.
 
     # load settings and create
     settings = d6tpipe.utils.loadjson(api.repopath/'.creds.json')['pipe-name']
-    d6tpipe.api.upsert_pipe(api, settings)
+    d6tpipe.upsert_pipe(api, settings)
 
     # or if you prefer yaml
     (api.repopath/'.creds.yaml').touch()
     settings_remote = d6tpipe.utils.loadyaml(api.repopath/'.creds.json')['pipe-name']
-    d6tpipe.api.upsert_pipe(api, settings)
+    d6tpipe.upsert_pipe(api, settings)
 
 See example templates in https://github.com/d6t/d6tpipe/tree/master/docs
 
@@ -109,13 +109,13 @@ To keep your credentials safe, especially on the cloud API, you can encrypt them
 
 .. code-block:: python
 
-    d6tpipe.api.create_or_update(api.cnxn.remotes, api.encode(settings))
+    d6tpipe.upsert_pipe(api, api.encode(settings))
 
-This uses an encryption key which is auto generated for you, you can update that key if you like, see config section. If you change the encryption key, you will have to recreate all encrypted pipes and remotes
+This uses an encryption key which is auto generated for you, you can update that key if you like, see config section. If you change the encryption key, you will have to recreate all encrypted pipes.
 
 Any form of security has downsides, here is how encrypting credentials impacts functionality:  
 
-* If you lose the encryption key, you will have to recreate all encrypted pipes and remotes  
+* If you lose the encryption key, you will have to recreate all encrypted pipes  
 * All operations have to take place locally, that is you can't schedule any sync or mirroring tasks on the sever because it won't be able to access the source  
 * You won't be able to share any credentials with other users unless they have your encryption key.  
 
@@ -146,7 +146,7 @@ d6tpipe comes batteries included with convenience functions to set up s3 buckets
         aws_secret_access_key=settings['BBB'],
     )
     settings = d6tpipe.utils.s3.create_bucket_with_users(session, 'remote-name')
-    d6tpipe.api.create_or_update(api.cnxn.remotes, settings)
+    d6tpipe.upsert_pipe(api, settings)
 
 See module refernce for details including how to customize. In case you have trust issues, you can inspect the source code to see what it does.
 

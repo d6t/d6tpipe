@@ -8,7 +8,7 @@ To add data to a pipe, you need to add files to the central pipe directory at ``
 
 .. code-block:: python
 
-    pipe = d6tpipe.pipe.Pipe(api, 'test')
+    pipe = d6tpipe.pipe.Pipe(api, 'pipe-name')
 
     # save new data directly to pipe
     df.to_csv(pipe.dirpath/'new.csv')

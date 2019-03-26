@@ -152,5 +152,5 @@ After you've registered a pipe, you can give others access to the remote data. B
     settings = {"username":"public","role":"read"}
     d6tpipe.upsert_permissions(api, 'your-pipe', settings)
 
-See :doc:`Permissions <../remotes>` for details.
+See :doc:`Permissions <../permissions>` for details.
 

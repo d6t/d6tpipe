@@ -35,7 +35,7 @@ Pipes not only store data but also control how data is stored, returned and prov
 * ``schema`` (json): see :doc:`Schema <../schema>`
 
 
-Pipe Inheritance
+Pipe Setting Inheritance
 ---------------------------------------------
 
 You can and should have multipe pipes that connect to the same underlying remote file storage but return different files. Why? Say you are a data vendor, you can create different pipes for different subscriptions without having to individually manage them. Say the vendors data files are:

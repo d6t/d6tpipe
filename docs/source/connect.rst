@@ -4,9 +4,9 @@ Connect to repo API
 What is the cloud repo API?
 ------------------------------
 
-The repo API stores details about remotes and pipes and is the first object you need to instantiate. There are alternatives to the cloud API, covered in advanced sections, but the cloud repo API is the best way to get started.
+The repo API stores details about pipes needed to pull/push data. There are alternatives to the cloud API, covered in advanced sections, but the cloud repo API is the best way to get started.
 
-Register and login
+Register user and login
 ------------------------------
 
 To use the cloud repo API, you need to register which you can do from inside python.
@@ -67,7 +67,7 @@ The best way to get started is to use the cloud API. As an alternative to the cl
     import d6tpipe
     api = d6tpipe.api.APILocal() # local mode
 
-Local mode requires you to manage more settings on your own (see below). Particularly you need to manage protocols and remote directories on your own.
+Local mode requires you to manage more settings on your own (see below). Particularly you need to manage protocols and remote directories on your own. Additionally, there is no pipe setting inheritance.
 
 .. code-block:: python
 
@@ -75,6 +75,7 @@ Local mode requires you to manage more settings on your own (see below). Particu
     settings['protocol']='s3'
     settings['options']={'remotepath': 's3://bucketname/foldername'}
     d6tpipe.upsert_pipe(api, settings)
+    settings['parent']='pipe-parent' # won't do anything
 
 
 Local vs Server Mode

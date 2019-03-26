@@ -1,8 +1,27 @@
 import d6tpipe
 api = d6tpipe.APIClient(profile='utest-local')
+api = d6tpipe.APIClient(profile='utest-d6tdev')
 # d6tpipe.api.ConfigManager(profile='utest-local').update({'token':None})
+# api = d6tpipe.APIClient(profile='utest-local')
 # api.register('utest-local','a@b.com','utest-local')
 # api.login('utest-dev','utest-devpwd')
+
+api.list_pipes(names_only=False)
+pipe = d6tpipe.Pipe(api,'nyu-2019Q1-backtest',mode='all')
+
+pipe.settings
+
+pipe.scan_remote()
+pipe.pull()
+
+quit()
+
+d6tpipe.api.ConfigManager(profile='demo-prod').init()
+api.register('demo', 'demo@databolt.tech', 'demo123')
+api = d6tpipe.APIClient(profile='demo-prod')
+api.list_pipes()
+pipe = d6tpipe.Pipe(api,'intro-stat-learning')
+pipe.pull()
 
 "utest-d6tdev"
 
@@ -10,8 +29,6 @@ cfg_name = 'utest-d6tfree'
 api.cnxn.pipes._(cfg_name).get()
 api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role':'read'})
 
-pipe = d6tpipe.Pipe(api,'utest-d6tfree')
-pipe.pull()
 
 pipe = d6tpipe.Pipe(api,'utest-d6tfree-tmp')
 pipe.pull()

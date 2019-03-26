@@ -47,9 +47,9 @@ For full quickstart instructions including setup, see [Quickstart documentation]
 
 import d6tpipe
 
-d6tpipe.api.ConfigManager().init() # just once
-api = d6tpipe.api.APIClient() # connect to repo API
-api.register('your-username','your@email.com','password') # just once
+d6tpipe.api.ConfigManager(profile='demo').init() # use demo account
+api = d6tpipe.api.APIClient(profile='demo')
+api.login('demo','demo123')
 
 # find interesting datasets
 api.list_pipes()

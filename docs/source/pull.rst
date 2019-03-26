@@ -4,7 +4,7 @@ Pull Files from Remote to Local
 Connecting to Pipes
 ---------------------------------------------
 
-To pull and push files, you connect to a data pipe. A data pipe lets you manage remote and local data files.  
+To pull and push files, you first connect to a data pipe. A data pipe lets you manage remote and local data files.  
 
 .. code-block:: python
 
@@ -22,7 +22,7 @@ To show files in the remote storage, run ``pipe.scan_remote()``.
 
 .. code-block:: python
 
-    pipe = d6tpipe.Pipe(api, 'pipe-name') # connect to a pipe
+    pipe = d6tpipe.Pipe(api, 'pipe-name')
     pipe.scan_remote() # show remote files
 
 
@@ -37,7 +37,7 @@ Pulling files will download files from the remote data repo to the local data re
     pipe.pull_preview() # preview
     pipe.pull() # execute
 
-Your files are now stored locally in a central location and conveniently accessible. See :doc:`Accessing Pipe Files <../files>` to learn how to use files after you have pulled them.
+Your files are now stored locally in a central location and conveniently accessible. See :doc:`Accessing Pipe Files <../read>` to learn how to use files after you have pulled them.
 
 Which files are pulled?
 ---------------------------------------------
