@@ -87,9 +87,9 @@ cfg_filenames_chk = ['machinedata-2018-0{}.csv'.format(i) for i in range(1,5)]
 # ************************************
 def getapi(local=False, profile=cfg_profile, filecfg=cfg_cfgfname):
     if local:
-        return d6tpipe.api.APILocal(profile=profile, filecfg=filecfg)
+        return d6tpipe.APILocal(profile=profile, filecfg=filecfg)
     else:
-        return d6tpipe.api.APIClient(profile=profile, filecfg=filecfg)
+        return d6tpipe.APIClient(profile=profile, filecfg=filecfg)
 def getapi2(local=False):
     return getapi(local,cfg_profile2)
 

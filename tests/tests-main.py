@@ -51,7 +51,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
-    scenarios = [scenario4]
+    scenarios = [scenario2]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
     # scenarios = [scenario4, scenario5]
@@ -291,6 +291,10 @@ class TestMain(object):
             def helper(_api, npipes, pipename, iswrite, isadmin):
                 rp = _api.cnxn.pipes.get()[1]
                 assert len(rp)==npipes
+                assert len(_api.list_pipes()) == npipes
+                if npipes==2:
+                    l = _api.list_pipes()
+                    assert cfg_parent_name in l and cfg_pipe_name in l
                 if npipes==0:
                     with pytest.raises(APIError, match='403'):
                         _api.cnxn.pipes._(pipename).get()
@@ -321,9 +325,9 @@ class TestMain(object):
                 # helper(api3, nremotes=nremotes2, npipes=npipes2, iswrite=False, isadmin=False)
 
             helperperm(0,cfg_parent_name,False)
-            api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": cfg_usr2, "role": "read"})
+            d6tpipe.upsert_permissions(api,cfg_parent_name,{"username": cfg_usr2, "role": "read"})
             helperperm(2,cfg_parent_name,False)
-            api.cnxn.pipes._(cfg_parent_name).permissions.post(request_body={"username": cfg_usr2, "role": "revoke"})
+            d6tpipe.upsert_permissions(api,cfg_parent_name,{"username": cfg_usr2, "role": "revoke"})
             helperperm(0,cfg_parent_name,False)
             api.cnxn.pipes._(cfg_pipe_name).permissions.post(request_body={"username": cfg_usr2, "role": "read"})
             helperperm(1,cfg_pipe_name,False)
@@ -508,6 +512,41 @@ class TestMain(object):
         assert d==[]
         '''
 
+    def test_d6tfree_share(self, cleanup, signup, testcfg):
+        if not testcfg.get('local',False):
+
+            cfg_name = 'utest-d6tfree'
+            cfg_name_child = cfg_name+'-child'
+            api = getapi(testcfg.get('local', False))
+            api2 = getapi2(testcfg.get('local', False))
+
+            # test quick create
+            d6tpipe.upsert_pipe(api, {'name': cfg_name})
+            d6tpipe.upsert_pipe(api, {'name': cfg_name_child, 'parent':cfg_name, 'options':{'dir':'child'}})
+            lp = api.list_pipes()
+            assert cfg_name in lp and cfg_name_child in lp
+
+            # share parent pipe
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_name).get()
+            d6tpipe.upsert_permissions(api, cfg_name, {'username':cfg_usr2, 'role':'read'})
+            assert api2.cnxn.pipes._(cfg_name).get()[1]['name']==cfg_name
+            assert api2.cnxn.pipes._(cfg_name_child).get()[1]['name']==cfg_name_child
+            d6tpipe.upsert_permissions(api, cfg_name, {'username':cfg_usr2, 'role':'revoke'})
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_name).get()
+
+            # share child pipe
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_name).get()
+            d6tpipe.upsert_permissions(api, cfg_name_child, {'username':cfg_usr2, 'role':'read'})
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_name).get()
+            assert api2.cnxn.pipes._(cfg_name_child).get()[1]['name']==cfg_name_child
+            d6tpipe.upsert_permissions(api, cfg_name_child, {'username':cfg_usr2, 'role':'revoke'})
+            with pytest.raises(APIError, match='403'):
+                api2.cnxn.pipes._(cfg_name_child).get()
+
     def test_d6tfree(self, cleanup, signup, testcfg):
         if not testcfg.get('local',False):
 
@@ -570,6 +609,9 @@ class TestMain(object):
             assert pipe2.push()==[cfg_copyfile,cfg_copyfile2]
 
             # todo: check don't have access to parent paths in s3
+            # todo: file include patterns
+            # d6tpipe.upsert_pipe(api,{'name':'demo-vendor-daily','parent':'demo-vendor','options':{'include':'*daily*.csv'}})
+            # d6tpipe.upsert_pipe(api,{'name':'demo-vendor-monthly','parent':'demo-vendor','options':{'include':'*monthly*.csv'}})
 
             # cleanup
             pipe.delete_files_remote(confirm=False)
@@ -672,7 +714,6 @@ class TestMain(object):
         df.to_csv(pipe.dirpath/cfg_copyfile,index=False)
         assert pipe.scan_remote(cached=False)==[]
         assert pipe.pull()==[]
-        # assert False
         assert pipe.push_preview()==[cfg_copyfile]
         assert pipe.push()==[cfg_copyfile]
         pipe._cache_scan.clear()

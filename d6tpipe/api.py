@@ -165,7 +165,7 @@ class _APIBase(metaclass=d6tcollect.Collect):
         """
         r = self.cnxn.pipes.get()[1]
         if parent_only:
-            r = [o for o in r if not r['parent']] # todo: check
+            r = [o for o in r if not o.get('parent')]
         if names_only:
             r = sorted([o['name'] for o in r])
         return r
