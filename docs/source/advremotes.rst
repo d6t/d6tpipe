@@ -39,6 +39,21 @@ Parameters
     * ``dir`` (str): read/write from/to this subdir (auto created)
 * ``schema`` (json): any parameters you want to pass to the reader
 
+Templates
+
+.. code-block:: python
+
+	# ftp
+    settings = \
+    {	
+		'name':'yourftp',
+		'protocol':'ftp',
+		'location':'ftp.domain.com',
+		'credentials':{'username':'name', 'password':'secure'}}
+    }
+
+    d6tpipe.upsert_pipe(api, settings)
+
 
 Access Control
 ---------------------------------------------
