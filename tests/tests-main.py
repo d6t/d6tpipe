@@ -51,7 +51,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
-    scenarios = [scenario2]
+    scenarios = [scenario4]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
     # scenarios = [scenario4, scenario5]
@@ -561,6 +561,8 @@ class TestMain(object):
             cred_write = api.cnxn.pipes._(cfg_name).credentials.get(query_params={'role': 'write'})[1]
             assert "aws_session_token" in cred_read and "aws_session_token" in cred_write
             assert cred_read['aws_access_key_id']!=cred_write['aws_access_key_id']
+
+            assert False
 
             # test force renew
             pipe = getpipe(api, name=cfg_name, mode='all')

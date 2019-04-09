@@ -38,9 +38,19 @@ pipe2.scan_remote()
 
 # trial ends, client subscription: monthly only
 d6tpipe.upsert_permissions(api,'demo-vendor',{'username':'demo','role':'revoke'})
-pipe2 = d6tpipe.Pipe(api2, 'demo-vendor') # fails
+try:
+    pipe2 = d6tpipe.Pipe(api2, 'demo-vendor') # fails
+except Exception as e:
+    print(e)
 d6tpipe.upsert_permissions(api,'demo-vendor-monthly',{'username':'demo','role':'read'})
-pipe2 = d6tpipe.Pipe(api2, 'demo-vendor') # fails
+try:
+    pipe2 = d6tpipe.Pipe(api2, 'demo-vendor') # fails
+except Exception as e:
+    print(e)
 pipe2 = d6tpipe.Pipe(api2, 'demo-vendor-monthly')
 pipe2.scan_remote()
 
+#****************************
+# vendor analytics
+#****************************
+pipe.cnxnpipe.analytics.get()

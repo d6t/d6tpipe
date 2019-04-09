@@ -1,4 +1,4 @@
-pytest tests/tests-main.py::TestMain
+pytest tests/tests-main.py::TestMain::test_d6tfree --pdb
 rm ~/d6tpipe/cfg-utest-dev.json
 rm -r ~/d6tpipe/files/utest-dev/
 rm -r ~/d6tpipe/files/utest-dev2/
