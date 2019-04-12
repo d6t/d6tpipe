@@ -8,14 +8,9 @@ You can push/pull from your own S3 and (s)ftp resources. The repo API stores all
 
 .. code-block:: python
 
-    import d6tpipe.api
-    import d6tpipe.pipe
-
-    api = d6tpipe.api.APIClient()
-
     settings = \
     {
-        'name': 'remote-name',
+        'name': 'pipe-name',
         'protocol': 's3',
         'location': 'bucket-name',
         'credentials' : {
@@ -43,13 +38,27 @@ Templates
 
 .. code-block:: python
 
-	# ftp
+    # s3
     settings = \
-    {	
-		'name':'yourftp',
-		'protocol':'ftp',
-		'location':'ftp.domain.com',
-		'credentials':{'username':'name', 'password':'secure'}}
+    {
+        'name': 'pipe-name',
+        'protocol': 's3',
+        'location': 'bucket-name',
+        'credentials' : {
+            'aws_access_key_id': 'AAA', 
+            'aws_secret_access_key': 'BBB'
+        }
+    }
+
+    d6tpipe.upsert_pipe(api, settings)
+
+    # ftp
+    settings = \
+    {   
+        'name':'yourftp',
+        'protocol':'ftp',
+        'location':'ftp.domain.com',
+        'credentials':{'username':'name', 'password':'secure'}
     }
 
     d6tpipe.upsert_pipe(api, settings)

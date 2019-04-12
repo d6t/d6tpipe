@@ -762,11 +762,12 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
             cnxn = self._connect()
             try:
-                cnxn.exists(ftp_dir)
+                if ftp_dir!='/':
+                    cnxn.exists(ftp_dir)
             except Exception as e:
                 if 'No such file or directory' in str(e):
                     cnxn._ftp_mkdirs(ftp_dir)
-                    return []
+                    return [] # created dir so will be empty
 
             credentials = self._get_credentials()
             remote = FtpTarget(ftp_dir, self.settings['location'], username=credentials['username'], password=credentials['password'])
@@ -774,7 +775,7 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
 
             try:
                 filesftp = list(remote.walk())
-                filesall = [{'filename':(o.rel_path+'/'+o.name)[idxStart:], 'modified_at': datetime.fromtimestamp(o.mtime), 'size':o.size, 'crc': "{}-{}".format(str(o.mtime),str(o.size)) } for o in filesftp if not o.is_dir()]
+                filesall = [{'filename':str(PurePosixPath(o.rel_path)/o.name)[idxStart:], 'modified_at': datetime.fromtimestamp(o.mtime), 'size':o.size, 'crc': "{}-{}".format(str(o.mtime),str(o.size)) } for o in filesftp if not o.is_dir()]
             finally:
                 remote.close()
 

@@ -51,7 +51,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
-    scenarios = [scenario4]
+    scenarios = [scenario2]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
     # scenarios = [scenario4, scenario5]
@@ -562,7 +562,7 @@ class TestMain(object):
             assert "aws_session_token" in cred_read and "aws_session_token" in cred_write
             assert cred_read['aws_access_key_id']!=cred_write['aws_access_key_id']
 
-            assert False
+            # assert False
 
             # test force renew
             pipe = getpipe(api, name=cfg_name, mode='all')
@@ -697,6 +697,63 @@ class TestMain(object):
         pipe.delete_files_local(confirm=False,delete_all=True)
 
 
+    @pytest.fixture(scope="function")
+    def setup_ftp_base(self, testcfg):
+        api = getapi(testcfg.get('local', False))
+        d6tpipe.upsert_pipe_json(api, 'tests/.creds-test.json', 'pipe-test-ftp')
+
+        settings = d6tpipe.utils.loadjson('tests/.creds-test.json')['pipe-test-ftp']
+        settings.pop('options')
+        settings['options'] = {'include':'root*.csv'}
+
+        if testcfg.get('local', False):
+            settings['options']['remotepath'] = '/'
+
+        d6tpipe.upsert_pipe(api, settings)
+        pipe = d6tpipe.Pipe(api, settings['name'])
+        yield pipe
+
+        pipe.delete_files_local(confirm=False,delete_all=True)
+
+    def test_ftp_base(self, cleanup, signup, setup_ftp_base, testcfg):
+        # assert False
+        pipe = setup_ftp_base
+        files = pipe.scan_remote()
+        assert files[0][0]!='/' # check no root dir
+        files2 = pipe.pull()
+        assert len(files2)==len(files)
+        assert len(pipe.scan_local())==len(files)
+
+    @pytest.fixture(scope="function")
+    def setup_sftp_base(self, testcfg):
+        api = getapi(testcfg.get('local', False))
+        settings = \
+        {
+            'name':'testftp',
+            'protocol':'sftp',
+            'location':'test.rebex.net',
+            'credentials':{'username':'demo', 'password':'password'},
+            'options': {'include':'*.txt'}
+        }
+
+        if testcfg.get('local', False):
+            settings['options'] = {**{'remotepath': '/'}, **settings.get('options',{})}
+
+        d6tpipe.upsert_pipe(api, settings)
+        pipe = d6tpipe.Pipe(api, settings['name'])
+        yield pipe
+
+        pipe.delete_files_local(confirm=False,delete_all=True)
+
+    def test_sftp_base(self, cleanup, signup, setup_sftp_base, testcfg):
+        # assert False
+        pipe = setup_sftp_base
+        files = pipe.scan_remote()
+        assert files[0][0]!='/' # check no root dir
+        assert len(files)==2
+        files2 = pipe.pull()
+        assert len(files2)==len(files)
+        assert len(pipe.scan_local())==len(files)
 
     def test_ftp(self, cleanup, signup, testcfg):
         api = getapi(testcfg.get('local', False))
