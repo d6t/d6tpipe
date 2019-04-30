@@ -9,20 +9,7 @@ The repo API stores details about pipes needed to pull/push data. There are alte
 Register user and login
 ------------------------------
 
-To use the cloud repo API, you need to register which you can do from inside python.
-
-.. code-block:: python
-
-    api = d6tpipe.api.APIClient() # you probably get a warning message
-    api.register('your-username','your@email.com','password') # do this just once
-
-In the future, in case you need to log in to d6tpipe on another machine after registering, call `login()` instead of `register()`.
-
-.. code-block:: python
-
-    # log in on another machine
-    api = d6tpipe.api.APIClient()
-    api.login('your-username','password') # do this just once
+To use the cloud repo API, you need to register which you can do from inside python. See :doc:`registration <../quickstart>`
 
 Now that you are registered you can :doc:`pull files <../pull>`.
 

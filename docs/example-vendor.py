@@ -35,6 +35,7 @@ api2.login('demo','demo123')
 d6tpipe.upsert_permissions(api,'demo-vendor',{'username':'demo','role':'read','expiration_date':'2019-12-31'}) # auto expire at end of trial
 pipe2 = d6tpipe.Pipe(api2, 'demo-vendor')
 pipe2.scan_remote()
+pipe2.pull()
 
 # trial ends, client subscription: monthly only
 d6tpipe.upsert_permissions(api,'demo-vendor',{'username':'demo','role':'revoke'})
@@ -54,3 +55,13 @@ pipe2.scan_remote()
 # vendor analytics
 #****************************
 pipe.cnxnpipe.analytics.get()
+
+
+#****************************
+# client permissions
+#****************************
+files = pipe2.pull()
+files = ['month2.csv']
+data_processed = futures_compute(files,'methodolgy')
+data_processed.to_csv(pipe_out.dirpath/'month2.csv')
+pipe_out.pull()

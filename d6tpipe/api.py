@@ -374,8 +374,11 @@ class APIClient(_APIBase, metaclass=d6tcollect.Collect):
         self._printtoken(token)
         return token
 
+    def setToken(self, token):
+        self._printtoken(token)
+
     def _printtoken(self, token):
-        print('Your token is below. Please save it! If you forget it, you can retrieve it with APIClient().forgotToken(username, password)')
+        print('Your token is below. Please save it and KEEP IT SAFE! If you forget it, you can retrieve it with APIClient().forgotToken(username, password)')
         print(token)
         print('reloading api to update token')
         self.configmgr.update({'token': token})

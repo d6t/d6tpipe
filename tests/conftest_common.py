@@ -96,7 +96,7 @@ def getapi2(local=False):
 def getconfig(profile):
     return d6tpipe.api.ConfigManager(profile=profile, filecfg=cfg_cfgfname)
 
-def getpipe(api, chk_empty=True, mode='default', name=None):
+def getpipe(api, chk_empty=False, mode='default', name=None):
     name = cfg_pipe_name if name is None else name
     pipe = d6tpipe.pipe.Pipe(api, name, mode=mode)
     if chk_empty:

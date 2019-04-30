@@ -4,23 +4,20 @@ Quickstart
 First-time setup and registration
 --------------------------------------
 
+1. Sign up at https://pipe.databolt.tech/gui/user-signup/
+2. Get API token at http://pipe.databolt.tech/gui/api-access
+3. Set up d6tpipe to use token 
+
 .. code-block:: python
     
     import d6tpipe
     d6tpipe.api.ConfigManager().init() # just once
 
     # register with cloud repo API
-    api = d6tpipe.api.APIClient() # you will get a message asking to register
-    api.register('your-username','your@email.com','password') # fill in your details
-
-That's it, all set! In the future, you may need to log in to d6tpipe on another machine after you already registered, call `login()` instead of `register()`.
-
-.. code-block:: python
-
-    # to log in on another machine
     api = d6tpipe.api.APIClient()
-    api.login('your-username','password') # fill in your details
+    api.setToken('your-token')
 
+** Run this ONCE. You do NOT to have to run this every time you use d6tpipe **
 
 See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details. 
 
