@@ -13,11 +13,11 @@ First-time setup and registration
     import d6tpipe
     d6tpipe.api.ConfigManager().init() # just once
 
-    # register with cloud repo API
+    # store to cloud repo API
     api = d6tpipe.api.APIClient()
-    api.setToken('your-token')
+    api.setToken('your-token') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
 
-** Run this ONCE. You do NOT to have to run this every time you use d6tpipe **
+**Run this ONCE. You do NOT to have to run this every time you use d6tpipe**
 
 See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details. 
 
