@@ -74,6 +74,9 @@ http://www-bcf.usc.edu/~gareth/ISL/data.html
 
 # read a file into pandas from central repo with correct settings
 
+print(pipe.schema['pandas'])
+# {'pandas': {'index_col': 0}, 'dask': {'usecols': [1, 2, 3, 4]}}
+
 import pandas as pd
 df = pd.read_csv(pipe.dirpath/'Advertising.csv', **pipe.schema['pandas']) 
 df.head(2)      

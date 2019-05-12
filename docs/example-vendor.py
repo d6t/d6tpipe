@@ -10,6 +10,7 @@ d6tpipe.upsert_pipe(api,{'name':'demo-vendor'})
 
 pipe = d6tpipe.Pipe(api, 'demo-vendor')
 print(pipe.settings['options']['remotepath'])
+print(pipe._get_credentials())
 
 import pandas as pd
 df = pd.DataFrame({'date':range(10),'data':range(10)})
@@ -58,10 +59,16 @@ pipe.cnxnpipe.analytics.get()
 
 
 #****************************
-# client permissions
+# REST CLI
 #****************************
-files = pipe2.pull()
-files = ['month2.csv']
-data_processed = futures_compute(files,'methodolgy')
-data_processed.to_csv(pipe_out.dirpath/'month2.csv')
-pipe_out.pull()
+
+
+print(f'SET AWS_ACCESS_KEY_ID={c["aws_access_key_id"]}')
+print(f'SET AWS_SECRET_ACCESS_KEY={c["aws_secret_access_key"]}')
+print(f'SET AWS_SESSION_TOKEN={c["aws_session_token"]}')
+
+print(f'export AWS_ACCESS_KEY_ID={c["aws_access_key_id"]}')
+print(f'export AWS_SECRET_ACCESS_KEY={c["aws_secret_access_key"]}')
+print(f'export AWS_SESSION_TOKEN={c["aws_session_token"]}')
+
+print(f"aws s3 ls {pipe.settings['options']['remotepath']}")
