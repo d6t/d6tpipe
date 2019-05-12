@@ -62,7 +62,7 @@ pipe.cnxnpipe.analytics.get()
 # REST CLI
 #****************************
 
-
+c = pipe._get_credentials() # pass write=True for write credentials
 print(f'SET AWS_ACCESS_KEY_ID={c["aws_access_key_id"]}')
 print(f'SET AWS_SECRET_ACCESS_KEY={c["aws_secret_access_key"]}')
 print(f'SET AWS_SESSION_TOKEN={c["aws_session_token"]}')
