@@ -51,7 +51,7 @@ scenario5 = ('heroku-prod', {'testcfg':{'server':'https://pipe.databolt.tech','e
 # setup
 # ************************************
 class TestMain(object):
-    scenarios = [scenario4]
+    scenarios = [scenario2]
     # scenarios = [scenario1, scenario2, scenario3]
     # scenarios = [scenario1]#[scenario1, scenario2, scenario3]
     # scenarios = [scenario4, scenario5]

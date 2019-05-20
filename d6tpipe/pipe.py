@@ -101,7 +101,7 @@ def _apply_fname_filter(fnames, include, exclude):
 class PipeBase(object, metaclass=d6tcollect.Collect):
     """
 
-    Abstract class, don't use this directly
+    Abstract class, use the functions but dont instantiate the class
 
     """
 
