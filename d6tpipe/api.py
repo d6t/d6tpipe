@@ -100,7 +100,8 @@ class ConfigManager(object):
 
     def _loadall(self):
         if not os.path.exists(self.filecfg):
-            raise ValueError('config does not exist at path '+self.filecfg + ', run d6tpipe.api.ConfigManager().init() once to create a config')
+            self.init()
+            warnings.warn('auto created profile "{}", see docs how to customize profile'.format(self.profile))
         with open(self.filecfg, 'r') as f:
             config = json.load(f)
         return config
