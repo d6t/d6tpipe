@@ -127,7 +127,7 @@ You can register your own pipes that point to your own remote data storage. d6tp
     api = d6tpipe.api.APIClient()
     
     # managed remote file stores can be created quickly with just one command 
-    d6tpipe.api.upsert_pipe(api, {'name': 'your-data-files', 'protocol': 'd6tfree'})
+    d6tpipe.upsert_pipe(api, {'name': 'your-pipe'})
 
 See :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Pipes <../advremotes>`.
 

@@ -117,7 +117,9 @@ class ConfigManager(object):
 
         config = self._loadall()
         if self.profile not in config:
-            raise ValueError('profile does not exist, create with `d6tpipe.api.ConfigManager(profile="{}").init()`'.format(self.profile))
+            self.init()
+            config = self._loadall()
+            warnings.warn('auto created profile "{}", see docs how to customize profile'.format(self.profile))
         config = config[self.profile]
         for ikey in ['filereporoot','filerepo','filedb']:
             if config[ikey].startswith('~'):  # do this dynamically
