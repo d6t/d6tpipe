@@ -1,16 +1,6 @@
 Configuring d6tpipe
 ==============================================
 
-First-time setup
-------------------------------
-
-To quickly configure d6pipe with default settings, run the code below. With that you're good to :doc:`connect to the cloud repo API <../connect>`.
-
-.. code-block:: python
-    
-    import d6tpipe
-    d6tpipe.api.ConfigManager().init() # just once
-
 Show Configuration
 ------------------------------
 

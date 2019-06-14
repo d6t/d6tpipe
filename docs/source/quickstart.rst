@@ -11,9 +11,7 @@ First-time setup and registration
 .. code-block:: python
     
     import d6tpipe
-    d6tpipe.api.ConfigManager().init() # just once
-
-    # store to cloud repo API
+    # cloud repo API token
     api = d6tpipe.api.APIClient()
     api.setToken('your-token') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
 
