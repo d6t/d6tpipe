@@ -9,3 +9,4 @@ tqdm>=4.25
 # tenacity>=5.0
 d6tcollect
 pyyaml
+Click==7.0

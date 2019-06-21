@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='d6tpipe',
     version='1.2.4',
-    packages=['d6tpipe','d6tpipe.http_client','d6tpipe.luigi','d6tpipe.utils'],
+    packages=['d6tpipe','d6tpipe.http_client','d6tpipe.luigi','d6tpipe.utils', 'cli'],
     url='https://github.com/d6t/d6tpipe',
     license='MIT',
     author='DataBolt Team',
@@ -18,5 +18,8 @@ setup(
     include_package_data=True,
     python_requires='>=3.5',
     keywords=['d6tpipe', 'data-pipes'],
-    classifiers=[]
+    classifiers=[],
+    entry_points = {
+        'console_scripts': ['d6tpipe=cli.d6tpipe:main'],
+    }
 )
