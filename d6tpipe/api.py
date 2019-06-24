@@ -101,7 +101,7 @@ class ConfigManager(object):
     def _loadall(self):
         if not os.path.exists(self.filecfg):
             self.init()
-            warnings.warn('auto created profile "{}", see docs how to customize profile'.format(self.profile))
+            print('auto created profile "{}", see docs how to customize profile'.format(self.profile))
         with open(self.filecfg, 'r') as f:
             config = json.load(f)
         return config

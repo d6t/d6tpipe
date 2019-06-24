@@ -16,6 +16,15 @@ Quickstart
 See :doc:`Quickstart <../quickstart>`
 
 
+Command line help
+----------------------------------
+
+The command line tool is the fastest way to pull/push files.
+
+.. code-block:: bash
+
+    d6tpipe --help
+
 User Guide
 ------------------------
 

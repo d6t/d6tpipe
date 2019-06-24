@@ -3,3 +3,5 @@ pandas
 dask
 fuckit
 python-dotenv
+pyftpsync
+pysftp

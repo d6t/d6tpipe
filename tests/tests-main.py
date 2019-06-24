@@ -61,8 +61,10 @@ class TestMain(object):
         # make sure nothing exists before starting tests
 
         cleaner(getapi,cfg_usr)
-        cleaner(getapi2,cfg_usr2)
+        cleaner(getapi2,cfg_usr2) # todo: this somehow auto creates profile
 
+        with fuckit:
+            Path(cfg_cfgfname2).unlink()
         assert not os.path.exists(cfg_cfgfname2)
 
         d6tcollect.host = testcfg.get('server',cfg_server)

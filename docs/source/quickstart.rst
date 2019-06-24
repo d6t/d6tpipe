@@ -22,7 +22,16 @@ See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details.
 Pull files from remote to local
 ----------------------------------
 
-To pull files, you connect to a data pipe. A data pipe lets you manage remote and local data files.
+Using the command line tool is the fastest way to pull files.
+
+.. code-block:: bash
+
+    d6tpipe pull --pipe intro-stat-learning --preview
+    d6tpipe pull --pipe intro-stat-learning
+    d6tpipe --help
+
+
+To pull files using python, you connect to a data pipe. A data pipe lets you manage remote and local data files.
 
 .. code-block:: python
     
@@ -38,7 +47,6 @@ To pull files, you connect to a data pipe. A data pipe lets you manage remote an
     pipe.pull() # download all data with just one command
 
 See :doc:`Pull Files<../pull>` for details.
-
 
 Access and read local files
 ------------------------------
@@ -113,6 +121,15 @@ You can easily save new files to the pipe. You can also push files from local to
     pipe.push() # execute
 
 See :doc:`Push <../push>` for details.
+
+Alternatively you can use the command line tool.
+
+.. code-block:: bash
+
+    d6tpipe push --pipe intro-stat-learning --preview
+    d6tpipe push --pipe intro-stat-learning
+    d6tpipe --help
+
 
 Register and administer pipes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
