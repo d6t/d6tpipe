@@ -11,7 +11,7 @@ setup(
     description='d6tpipe is a python library which makes it easier to exchange data',
     long_description='d6tpipe is a python library which makes it easier to exchange data. For example between data vendors and consumers, data engineers and data scientists, teachers and students or desktop and laptop. In just a few lines of code, you can push and pull data to/from S3 and ftp in a simple and unified framework.',
     install_requires=[
-        'luigi','tinydb','boto3','botocore','tinydb-serialization','cachetools','pyjwt','pyyaml','tqdm','d6tcollect'
+        'luigi','tinydb','boto3','botocore','tinydb-serialization','cachetools','pyjwt','pyyaml','tqdm','Click','d6tcollect'
     ],
     extras_require={
     'ftp': ['pysftp','pyftpsync']},

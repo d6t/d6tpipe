@@ -795,7 +795,10 @@ class TestMain(object):
             d6tpipe.api.ConfigManager(profile=iprofile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
             cleaner(getapi(profile=iprofile),iprofile)
             api = getapi(profile=iprofile)
-            api.register(iprofile, iprofile + '@domain.com', iprofile+'password')
+            if 'https' in testcfg.get('server',cfg_server):
+                api.login('demo','demo123')
+            else:
+                api.register(iprofile, iprofile + '@domain.com', iprofile+'password')
             yield api
             with fuckit:
                 api.cnxn.pipes._(iprofile).delete()

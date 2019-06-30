@@ -13,6 +13,8 @@ You can push/pull from your own S3 and (s)ftp resources. The repo API stores all
         'name': 'pipe-name',
         'protocol': 's3',
         'location': 'bucket-name',
+        'options': {
+            'remotepath': 's3://bucket-name/'}
         'credentials' : {
             'aws_access_key_id': 'AAA', 
             'aws_secret_access_key': 'BBB'
@@ -31,6 +33,7 @@ Parameters
 * ``location`` (str): s3 bucket, ftp server name/ip
 * ``credentials`` (json): credentials for pulling. s3: aws_access_key_id, aws_secret_access_key. ftp: username, password
 * ``options`` (json): any options to be shared across pipes
+    * ``remotepath`` (str): path where data is located. If you connect to a Databolt Pipe server that is managed on your behalf
     * ``dir`` (str): read/write from/to this subdir (auto created)
 * ``schema`` (json): any parameters you want to pass to the reader
 
@@ -44,6 +47,8 @@ Templates
         'name': 'pipe-name',
         'protocol': 's3',
         'location': 'bucket-name',
+        'options': {
+            'remotepath': 's3://bucket-name/'}
         'credentials' : {
             'aws_access_key_id': 'AAA', 
             'aws_secret_access_key': 'BBB'
@@ -58,6 +63,8 @@ Templates
         'name':'yourftp',
         'protocol':'ftp',
         'location':'ftp.domain.com',
+        'options': {
+            'remotepath': '/'}
         'credentials':{'username':'name', 'password':'secure'}
     }
 
