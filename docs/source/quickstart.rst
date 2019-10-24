@@ -1,6 +1,11 @@
 Quickstart
 ==============================================
 
+Installation
+------------------------
+
+Follow github instructions https://github.com/d6t/d6tpipe#installation
+
 First-time setup and registration
 --------------------------------------
 
