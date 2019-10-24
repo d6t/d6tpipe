@@ -16,9 +16,7 @@ First-time setup and registration
 .. code-block:: python
     
     import d6tpipe
-    d6tpipe.api.ConfigManager().init() # just once
-
-    # store to cloud repo API
+    # cloud repo API token
     api = d6tpipe.api.APIClient()
     api.setToken('your-token') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
 
@@ -29,7 +27,16 @@ See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details.
 Pull files from remote to local
 ----------------------------------
 
-To pull files, you connect to a data pipe. A data pipe lets you manage remote and local data files.
+Using the command line tool is the fastest way to pull files.
+
+.. code-block:: bash
+
+    d6tpipe pull --pipe intro-stat-learning --preview
+    d6tpipe pull --pipe intro-stat-learning
+    d6tpipe --help
+
+
+To pull files using python, you connect to a data pipe. A data pipe lets you manage remote and local data files.
 
 .. code-block:: python
     
@@ -45,7 +52,6 @@ To pull files, you connect to a data pipe. A data pipe lets you manage remote an
     pipe.pull() # download all data with just one command
 
 See :doc:`Pull Files<../pull>` for details.
-
 
 Access and read local files
 ------------------------------
@@ -121,6 +127,15 @@ You can easily save new files to the pipe. You can also push files from local to
 
 See :doc:`Push <../push>` for details.
 
+Alternatively you can use the command line tool.
+
+.. code-block:: bash
+
+    d6tpipe push --pipe intro-stat-learning --preview
+    d6tpipe push --pipe intro-stat-learning
+    d6tpipe --help
+
+
 Register and administer pipes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -132,7 +147,7 @@ You can register your own pipes that point to your own remote data storage. d6tp
     api = d6tpipe.api.APIClient()
     
     # managed remote file stores can be created quickly with just one command 
-    d6tpipe.api.upsert_pipe(api, {'name': 'your-data-files', 'protocol': 'd6tfree'})
+    d6tpipe.upsert_pipe(api, {'name': 'your-pipe'})
 
 See :doc:`Pipes <../pipes>` for details. For creating self-hosted remotes, see :doc:`Advanced Pipes <../advremotes>`.
 

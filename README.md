@@ -46,10 +46,7 @@ For full quickstart instructions including setup, see [Quickstart documentation]
 ```python
 
 import d6tpipe
-
-d6tpipe.api.ConfigManager(profile='demo').init() # use demo account
-api = d6tpipe.api.APIClient(profile='demo')
-api.login('demo','demo123')
+api = d6tpipe.api.APIClient()
 
 # find interesting datasets
 api.list_pipes()
@@ -88,9 +85,18 @@ df.head(2)
 
 ```
 
+You can also use the command line for common commands like pull, push and scan.
+```bash
+d6tpipe pull --pipe intro-stat-learning
+d6tpipe --help
+```
+
+
 ## Documentation
 
 http://d6tpipe.readthedocs.io
+
+For help with command line, run `d6tpipe --help`.
 
 ## Data Security
 

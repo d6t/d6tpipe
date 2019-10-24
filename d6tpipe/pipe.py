@@ -685,9 +685,9 @@ class Pipe(PipeBase, metaclass=d6tcollect.Collect):
         """
 
         if delete:
-            self._empty_local()
+            self.delete_files_local()
         self.setmode('all')
-        self.pull()
+        self.pull(cached=False)
         self.setmode('default')
 
     def remove_orphans(self, files=None, direction='local', dryrun=None):

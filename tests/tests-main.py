@@ -61,8 +61,10 @@ class TestMain(object):
         # make sure nothing exists before starting tests
 
         cleaner(getapi,cfg_usr)
-        cleaner(getapi2,cfg_usr2)
+        cleaner(getapi2,cfg_usr2) # todo: this somehow auto creates profile
 
+        with fuckit:
+            Path(cfg_cfgfname2).unlink()
         assert not os.path.exists(cfg_cfgfname2)
 
         d6tcollect.host = testcfg.get('server',cfg_server)
@@ -793,7 +795,10 @@ class TestMain(object):
             d6tpipe.api.ConfigManager(profile=iprofile,filecfg=cfg_cfgfname).init({'server':testcfg.get('server',cfg_server)})
             cleaner(getapi(profile=iprofile),iprofile)
             api = getapi(profile=iprofile)
-            api.register(iprofile, iprofile + '@domain.com', iprofile+'password')
+            if 'https' in testcfg.get('server',cfg_server):
+                api.login('demo','demo123')
+            else:
+                api.register(iprofile, iprofile + '@domain.com', iprofile+'password')
             yield api
             with fuckit:
                 api.cnxn.pipes._(iprofile).delete()
