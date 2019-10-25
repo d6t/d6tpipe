@@ -13,12 +13,20 @@ First-time setup and registration
 2. Get API token at http://pipe.databolt.tech/gui/api-access
 3. Set up d6tpipe to use token 
 
+Using command line
+
+.. code-block:: bash
+
+    d6tpipe profiles token set --token <your-token>
+
+Or using python
+
 .. code-block:: python
     
     import d6tpipe
     # cloud repo API token
     api = d6tpipe.api.APIClient()
-    api.setToken('your-token') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
+    api.setToken('<your-token>') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
 
 **Run this ONCE. You do NOT to have to run this every time you use d6tpipe**
 
@@ -31,6 +39,10 @@ Using the command line tool is the fastest way to pull files.
 
 .. code-block:: bash
 
+    # list data pipes you have access to
+    d6tpipe list remote
+
+    # pull files from a data pipe
     d6tpipe pull --pipe intro-stat-learning --preview
     d6tpipe pull --pipe intro-stat-learning
     d6tpipe --help
