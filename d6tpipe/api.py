@@ -217,9 +217,11 @@ class _APIBase(metaclass=d6tcollect.Collect):
 
         """
 
+        Path(path).mkdir(parents=True, exist_ok=True)
         shutil.move(self.filerepo,path)
         self.configmgr.update({'filerepo': path})
-        print('Moved repo to {}. Reload api to use new repo path'.format(path))
+        print('Moved repo to {}. Reloading api'.format(path))
+        self.__init__(profile=self.profile, filecfg=self.cfg_filecfg)
 
         return True
 

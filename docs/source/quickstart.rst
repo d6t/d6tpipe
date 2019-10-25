@@ -30,7 +30,12 @@ Or using python
 
 **Run this ONCE. You do NOT to have to run this every time you use d6tpipe**
 
-See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details. 
+See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details.
+
+Where are files saved?
+----------------------------------
+
+See :doc:`Config <../config>`
 
 Pull files from remote to local
 ----------------------------------
@@ -62,6 +67,10 @@ To pull files using python, you connect to a data pipe. A data pipe lets you man
     pipe = d6tpipe.Pipe(api, 'intro-stat-learning') # connect to a data pipe
     pipe.pull_preview() # preview files and size
     pipe.pull() # download all data with just one command
+
+    # advanced: show location and credentials
+    pipe.remote_prefix
+    pipe._get_credentials()
 
 See :doc:`Pull Files<../pull>` for details.
 

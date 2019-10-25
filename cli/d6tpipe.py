@@ -155,7 +155,17 @@ def get_token(profile):
             click.echo('No token found')
     except Exception as e:
         click.echo(e)
-    
+
+
+@click.option("--profile", help="Profile name")
+@profiles.command(name='dir')
+def show_dir(profile):
+    try:
+        api = d6tpipe.api.APIClient(profile=profile)
+        print('Local repo:', api.dir)
+    except Exception as e:
+        click.echo(e)
+
 
 # Top level commands
 main.add_command(create)
