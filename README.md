@@ -98,6 +98,16 @@ http://d6tpipe.readthedocs.io
 
 For help with command line, run `d6tpipe --help`.
 
+## Pro version
+
+Additional features:  
+* Full Web GUI
+* Usage Analytics
+* Fully managed infrastructure
+* Host docs and meta data
+
+[Learn more](https://www.databolt.tech/index-pipe-vendors.html)
+
 ## Data Security
 
 If you are using managed remotes files will be stored in a d6tpipe AWS S3 bucket where permissions and credentials are managed on your behalf. Permissions are managed such that only you have access, unless you grant access to others. You can also self-host S3 and ftp which requires you or a vendor to set up and manage the remote file storage on your own.
