@@ -30,6 +30,16 @@ Or using python
 
 **Run this ONCE. You do NOT to have to run this every time you use d6tpipe**
 
+Advanced: create profile with custom filerepo path
+
+.. code-block:: python
+    
+    import d6tpipe
+    d6tpipe.api.ConfigManager(profile='profile-name').init({'filerepo':'/path/to/data'})
+    api = d6tpipe.api.APIClient(profile='profile-name')
+    api.setToken('<your-token>') # DONT SHARE YOUR TOKEN! Do not save in code, just run it once
+
+
 See :doc:`Config <../config>` and :doc:`Connect <../connect>` for details.
 
 Where are files saved?
