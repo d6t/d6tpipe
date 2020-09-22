@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='d6tpipe',
-    version='1.2.6',
+    version='1.2.7',
     packages=['d6tpipe','d6tpipe.http_client','d6tpipe.luigi','d6tpipe.utils', 'cli'],
     url='https://github.com/d6t/d6tpipe',
     license='MIT',
