@@ -1,3 +1,5 @@
+# This library is no longer operational and maintained
+
 # Databolt Pipeline
 
 d6tpipe is a python library which makes it easier to exchange data files. It's like git for data! But better because you can include it in your data science code.
